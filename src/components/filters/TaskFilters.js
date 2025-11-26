@@ -136,13 +136,13 @@ const TaskFilters = ({ filters, onFiltersChange, projectId, canSaveWorkspaceWide
   ];
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4 mb-6">
       {/* Filter Bar */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-3">
         {/* Filter Toggle Button */}
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className="btn btn-secondary flex items-center gap-2"
+          className="btn btn-secondary flex items-center gap-2 px-4 py-2"
         >
           <Filter className="w-4 h-4" />
           Filters
@@ -157,7 +157,7 @@ const TaskFilters = ({ filters, onFiltersChange, projectId, canSaveWorkspaceWide
         {/* Saved Views Button */}
         <button
           onClick={() => setShowSavedViews(!showSavedViews)}
-          className="btn btn-secondary flex items-center gap-2"
+          className="btn btn-secondary flex items-center gap-2 px-4 py-2"
         >
           <Star className="w-4 h-4" />
           Saved Views
@@ -215,7 +215,7 @@ const TaskFilters = ({ filters, onFiltersChange, projectId, canSaveWorkspaceWide
         {activeFilterCount > 0 && (
           <button
             onClick={() => setShowSaveModal(true)}
-            className="btn btn-primary btn-sm flex items-center gap-2 ml-auto"
+            className="btn btn-primary btn-sm flex items-center gap-2 ml-auto px-4 py-2"
           >
             <Save className="w-4 h-4" />
             Save View
@@ -230,7 +230,7 @@ const TaskFilters = ({ filters, onFiltersChange, projectId, canSaveWorkspaceWide
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="card p-6 overflow-hidden"
+            className="card p-6 overflow-hidden mt-2"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Status Filter */}
@@ -357,7 +357,7 @@ const TaskFilters = ({ filters, onFiltersChange, projectId, canSaveWorkspaceWide
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="card p-4 overflow-hidden"
+            className="card p-6 overflow-hidden mt-2"
           >
             <h3 className="font-semibold text-neutral-900 dark:text-neutral-100 mb-3">Saved Views</h3>
             {savedViews.length === 0 ? (
