@@ -52,6 +52,11 @@ const taskSchema = new mongoose.Schema({
     key: String, // S3 key or Cloudinary public_id
     type: String,
     size: Number,
+    provider: {
+      type: String,
+      enum: ['cloudinary', 's3'],
+      default: 'cloudinary'
+    },
     uploadedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'

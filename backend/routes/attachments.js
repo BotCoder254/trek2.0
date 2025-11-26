@@ -19,12 +19,28 @@ router.post('/presign', protect, [
   try {
     const { filename, mimetype, size } = req.body;
 
-    // Validate file size (max 50MB)
-    const MAX_SIZE = 50 * 1024 * 1024;
+    // Validate file size (max 10MB)
+    const MAX_SIZE = 10 * 1024 * 1024;
     if (size > MAX_SIZE) {
       return res.status(400).json({
         success: false,
-        message: 'File size exceeds 50MB limit'
+        message: 'File size exceeds 10MB limit'
+      });
+    }
+
+    // Validate file type
+    const allowedTypes = [
+      'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+      'application/pdf',
+      'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/plain', 'text/csv'
+    ];
+
+    if (!allowedTypes.includes(mimetype)) {
+      return res.status(400).json({
+        success: false,
+        message: 'File type not allowed. Supported: images, PDF, Word, Excel, text files'
       });
     }
 
@@ -56,10 +72,11 @@ router.post('/task/:taskId', protect, [
   body('type').notEmpty().withMessage('File type is required'),
   body('size').isInt().withMessage('Size must be a number'),
   body('key').notEmpty().withMessage('File key is required'),
+  body('provider').optional().isIn(['cloudinary', 's3']).withMessage('Invalid provider'),
   validate
 ], async (req, res, next) => {
   try {
-    const { name, url, type, size, key } = req.body;
+    const { name, url, type, size, key, provider } = req.body;
     const task = await Task.findById(req.params.taskId);
 
     if (!task) {
@@ -75,6 +92,7 @@ router.post('/task/:taskId', protect, [
       type,
       size,
       key,
+      provider: provider || 'cloudinary',
       uploadedBy: req.user._id,
       uploadedAt: new Date()
     };
@@ -128,7 +146,7 @@ router.delete('/task/:taskId/:attachmentId', protect, async (req, res, next) => 
 
     // Delete from storage
     if (attachment.key) {
-      await deleteFile(attachment.key);
+      await deleteFile(attachment.key, attachment.provider);
     }
 
     task.attachments.pull(req.params.attachmentId);

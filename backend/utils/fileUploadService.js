@@ -158,31 +158,93 @@ exports.deleteCloudinaryFile = async (publicId) => {
   }
 };
 
-// Unified upload interface
-exports.getUploadCredentials = async (filename, mimetype) => {
-  if (config.STORAGE_TYPE === 'cloudinary') {
-    return await exports.getCloudinarySignature(filename);
-  } else {
-    return await exports.getS3PresignedUrl(filename, mimetype);
-  }
+// Check if Cloudinary is configured
+const isCloudinaryConfigured = () => {
+  return config.CLOUDINARY_CLOUD_NAME && 
+         config.CLOUDINARY_API_KEY && 
+         config.CLOUDINARY_API_SECRET &&
+         config.CLOUDINARY_CLOUD_NAME !== 'your-cloud-name';
 };
 
-exports.deleteFile = async (fileKey) => {
-  if (config.STORAGE_TYPE === 'cloudinary') {
+// Check if S3 is configured
+const isS3Configured = () => {
+  return config.AWS_ACCESS_KEY_ID && 
+         config.AWS_SECRET_ACCESS_KEY && 
+         config.AWS_S3_BUCKET &&
+         config.AWS_ACCESS_KEY_ID !== 'your-aws-access-key';
+};
+
+// Unified upload interface - Cloudinary first, S3 fallback
+exports.getUploadCredentials = async (filename, mimetype) => {
+  // Try Cloudinary first
+  if (isCloudinaryConfigured()) {
+    console.log('Using Cloudinary for file upload');
+    const result = await exports.getCloudinarySignature(filename);
+    if (result.success) {
+      return { ...result, provider: 'cloudinary' };
+    }
+    console.warn('Cloudinary failed, falling back to S3');
+  }
+  
+  // Fallback to S3
+  if (isS3Configured()) {
+    console.log('Using S3 for file upload');
+    const result = await exports.getS3PresignedUrl(filename, mimetype);
+    return { ...result, provider: 's3' };
+  }
+  
+  // No storage configured
+  return {
+    success: false,
+    error: 'No file storage service configured. Please configure Cloudinary or AWS S3.'
+  };
+};
+
+exports.deleteFile = async (fileKey, provider) => {
+  // If provider specified, use it
+  if (provider === 'cloudinary' && isCloudinaryConfigured()) {
     return await exports.deleteCloudinaryFile(fileKey);
-  } else {
+  }
+  if (provider === 's3' && isS3Configured()) {
     return await exports.deleteS3File(fileKey);
   }
+  
+  // Auto-detect based on key format
+  if (fileKey.includes('trek-uploads/') || fileKey.includes('cloudinary')) {
+    if (isCloudinaryConfigured()) {
+      return await exports.deleteCloudinaryFile(fileKey);
+    }
+  }
+  
+  // Default to S3
+  if (isS3Configured()) {
+    return await exports.deleteS3File(fileKey);
+  }
+  
+  return { success: false, error: 'No storage provider configured' };
 };
 
-exports.getFileUrl = async (fileKey, isPublic = false) => {
-  if (config.STORAGE_TYPE === 'cloudinary') {
-    // Cloudinary URLs are already accessible
+exports.getFileUrl = async (fileKey, isPublic = false, provider) => {
+  // If provider specified, use it
+  if (provider === 'cloudinary' && isCloudinaryConfigured()) {
     return {
       success: true,
       url: cloudinary.url(fileKey, { secure: true })
     };
-  } else {
+  }
+  
+  // Auto-detect Cloudinary URLs
+  if (fileKey.includes('cloudinary') || fileKey.includes('trek-uploads/')) {
+    if (isCloudinaryConfigured()) {
+      return {
+        success: true,
+        url: cloudinary.url(fileKey, { secure: true })
+      };
+    }
+  }
+  
+  // S3 URLs
+  if (isS3Configured()) {
     if (isPublic) {
       return {
         success: true,
@@ -192,5 +254,7 @@ exports.getFileUrl = async (fileKey, isPublic = false) => {
       return await exports.getS3SignedDownloadUrl(fileKey);
     }
   }
+  
+  return { success: false, error: 'No storage provider configured' };
 };
 
