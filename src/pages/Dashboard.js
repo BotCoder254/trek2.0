@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -120,13 +120,14 @@ const Dashboard = () => {
     enabled: !!currentWorkspace?.id
   });
 
-  const stats = dashboardData?.data || {};
-  const recentProjects = recentProjectsData?.data || [];
-  const recentTasks = recentTasksData?.data || [];
-  const projectProgress = projectProgressData?.data || [];
-  const tasksByAssignee = tasksByAssigneeData?.data || [];
-  const tasksTrend = tasksTrendData?.data || [];
-  const activities = activityData?.data || [];
+  // Memoize data to prevent flickering
+  const stats = useMemo(() => dashboardData?.data || {}, [dashboardData]);
+  const recentProjects = useMemo(() => recentProjectsData?.data || [], [recentProjectsData]);
+  const recentTasks = useMemo(() => recentTasksData?.data || [], [recentTasksData]);
+  const projectProgress = useMemo(() => projectProgressData?.data || [], [projectProgressData]);
+  const tasksByAssignee = useMemo(() => tasksByAssigneeData?.data || [], [tasksByAssigneeData]);
+  const tasksTrend = useMemo(() => tasksTrendData?.data || [], [tasksTrendData]);
+  const activities = useMemo(() => activityData?.data || [], [activityData]);
 
   // Manual refresh function
   const handleRefresh = async () => {
@@ -138,13 +139,12 @@ const Dashboard = () => {
     setIsRefreshing(false);
   };
 
-  // Auto-refresh indicator
+  // Update last updated time only when data actually changes
   useEffect(() => {
-    const interval = setInterval(() => {
+    if (dashboardData) {
       setLastUpdated(new Date());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
+    }
+  }, [dashboardData]);
 
   // Enhanced Chart configurations with gradients and animations
   const taskStatusData = {
@@ -346,7 +346,7 @@ const Dashboard = () => {
     }
   };
 
-  const StatCard = ({ icon: Icon, title, value, subtitle, color, trend, trendDirection = 'up', onClick }) => (
+  const StatCard = React.memo(({ icon: Icon, title, value, subtitle, color, trend, trendDirection = 'up', onClick }) => (
     <motion.div
       whileHover={{ y: -6, scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
@@ -397,7 +397,7 @@ const Dashboard = () => {
         <p className="text-xs text-neutral-500 mt-2 font-medium">{subtitle}</p>
       )}
     </motion.div>
-  );
+  ));
 
   return (
     <div className="min-h-screen p-4 sm:p-6 lg:p-8">

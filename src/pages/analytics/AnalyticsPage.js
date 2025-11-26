@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   TrendingUp, Calendar, Users, Target, 
-  BarChart3, Activity, Download
+  BarChart3, Activity, Download, RefreshCw,
+  Clock, Zap, AlertCircle, CheckCircle2,
+  PieChart, LineChart, BarChart2, TrendingDown
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useWorkspace } from '../../context/WorkspaceContext';
@@ -38,16 +40,27 @@ ChartJS.register(
 const AnalyticsPage = () => {
   const { currentWorkspace } = useWorkspace();
   const [timeRange, setTimeRange] = useState('30');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
 
-  // Fetch all analytics data
-  const { data: dashboardData } = useQuery({
+  // Fetch all analytics data with real-time updates
+  const { data: dashboardData, refetch: refetchDashboard } = useQuery({
     queryKey: ['analytics', 'dashboard', currentWorkspace?.id],
     queryFn: async () => {
       const response = await api.get(`/analytics/dashboard/${currentWorkspace.id}`);
+      setLastUpdated(new Date());
       return response.data;
     },
-    enabled: !!currentWorkspace?.id
+    enabled: !!currentWorkspace?.id,
+    refetchInterval: 30000 // Refetch every 30 seconds
   });
+
+  // Manual refresh
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refetchDashboard();
+    setIsRefreshing(false);
+  };
 
   const { data: tasksByStatusData } = useQuery({
     queryKey: ['analytics', 'tasks-by-status', currentWorkspace?.id, timeRange],
@@ -76,9 +89,10 @@ const AnalyticsPage = () => {
     enabled: !!currentWorkspace?.id
   });
 
-  const stats = dashboardData?.data || {};
-  const projectProgress = projectProgressData?.data || [];
-  const tasksByAssignee = tasksByAssigneeData?.data || [];
+  // Memoize data to prevent flickering
+  const stats = useMemo(() => dashboardData?.data || {}, [dashboardData]);
+  const projectProgress = useMemo(() => projectProgressData?.data || [], [projectProgressData]);
+  const tasksByAssignee = useMemo(() => tasksByAssigneeData?.data || [], [tasksByAssigneeData]);
 
   // Prepare task trend data
   const taskTrendData = {
@@ -150,62 +164,154 @@ const AnalyticsPage = () => {
     }]
   };
 
+  // Enhanced Grafana-style chart options
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: {
+      mode: 'index',
+      intersect: false
+    },
     plugins: {
       legend: {
         position: 'bottom',
-        labels: { padding: 15, font: { size: 12 } }
+        labels: { 
+          padding: 20, 
+          font: { size: 12, weight: '500' },
+          usePointStyle: true,
+          pointStyle: 'circle'
+        }
+      },
+      tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+        titleColor: 'white',
+        bodyColor: 'white',
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+        borderWidth: 1,
+        cornerRadius: 8,
+        displayColors: true,
+        padding: 12
       }
     },
     scales: {
-      y: { beginAtZero: true },
-      x: { ticks: { font: { size: 11 } } }
+      y: { 
+        beginAtZero: true,
+        grid: {
+          color: 'rgba(0, 0, 0, 0.05)',
+          drawBorder: false
+        },
+        ticks: { 
+          font: { size: 11 },
+          color: 'rgba(0, 0, 0, 0.6)'
+        }
+      },
+      x: { 
+        grid: {
+          display: false
+        },
+        ticks: { 
+          font: { size: 11 },
+          color: 'rgba(0, 0, 0, 0.6)'
+        }
+      }
+    },
+    animation: {
+      duration: 1000,
+      easing: 'easeInOutQuart'
     }
   };
 
   const lineOptions = {
     ...chartOptions,
-    interaction: {
-      mode: 'index',
-      intersect: false
+    elements: {
+      line: {
+        tension: 0.4,
+        borderWidth: 3
+      },
+      point: {
+        radius: 4,
+        hoverRadius: 8,
+        hoverBorderWidth: 3
+      }
     }
   };
 
   const doughnutOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    cutout: '70%',
     plugins: {
       legend: {
         position: 'right',
-        labels: { padding: 15, font: { size: 12 } }
+        labels: { 
+          padding: 20, 
+          font: { size: 12, weight: '500' },
+          usePointStyle: true,
+          pointStyle: 'circle'
+        }
+      },
+      tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+        titleColor: 'white',
+        bodyColor: 'white',
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+        borderWidth: 1,
+        cornerRadius: 8,
+        padding: 12
       }
+    },
+    animation: {
+      animateRotate: true,
+      animateScale: true,
+      duration: 1200
     }
   };
 
-  const MetricCard = ({ icon: Icon, title, value, change, color }) => (
-    <div className="card p-6">
-      <div className="flex items-start justify-between mb-4">
-        <div className={`p-3 rounded-lg ${color}`}>
+  const MetricCard = React.memo(({ icon: Icon, title, value, change, color, trend = 'up' }) => (
+    <motion.div 
+      whileHover={{ y: -4, scale: 1.02 }}
+      className="card p-6 relative overflow-hidden group cursor-pointer"
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-transparent to-black/5 dark:to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      
+      <div className="flex items-start justify-between mb-4 relative z-10">
+        <motion.div 
+          className={`p-3 rounded-xl ${color} shadow-lg`}
+          whileHover={{ rotate: 5, scale: 1.1 }}
+        >
           <Icon className="w-6 h-6 text-white" />
-        </div>
+        </motion.div>
         {change && (
-          <div className={`text-sm font-medium ${
-            change.startsWith('+') ? 'text-success-light' : 'text-secondary-light'
-          }`}>
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className={`flex items-center gap-1 text-sm font-semibold px-2 py-1 rounded-full ${
+              trend === 'up' 
+                ? 'text-success-light bg-success-light/10' 
+                : 'text-secondary-light bg-secondary-light/10'
+            }`}
+          >
+            {trend === 'up' ? (
+              <TrendingUp className="w-4 h-4" />
+            ) : (
+              <TrendingDown className="w-4 h-4" />
+            )}
             {change}
-          </div>
+          </motion.div>
         )}
       </div>
-      <div>
-        <h3 className="text-3xl font-bold text-neutral-900 dark:text-neutral-100 mb-1">
+      <div className="relative z-10">
+        <motion.h3 
+          className="text-3xl font-bold text-neutral-900 dark:text-neutral-100 mb-1"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
           {value}
-        </h3>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">{title}</p>
+        </motion.h3>
+        <p className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">{title}</p>
       </div>
-    </div>
-  );
+    </motion.div>
+  ));
 
   return (
     <div className="min-h-screen p-4 sm:p-6 lg:p-8">
@@ -222,6 +328,12 @@ const AnalyticsPage = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <div className="text-right mr-2">
+              <p className="text-xs text-neutral-500">Last updated</p>
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                {lastUpdated.toLocaleTimeString()}
+              </p>
+            </div>
             <select
               value={timeRange}
               onChange={(e) => setTimeRange(e.target.value)}
@@ -231,7 +343,17 @@ const AnalyticsPage = () => {
               <option value="30">Last 30 days</option>
               <option value="90">Last 90 days</option>
             </select>
-            <button className="btn btn-secondary flex items-center gap-2">
+            <motion.button 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="btn btn-secondary flex items-center gap-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </motion.button>
+            <button className="btn btn-primary flex items-center gap-2">
               <Download className="w-4 h-4" />
               Export
             </button>

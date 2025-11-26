@@ -14,7 +14,8 @@ import {
   Building2,
   CheckSquare,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Bell
 } from 'lucide-react';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -55,6 +56,21 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, onClose }) => {
   const recentProjects = recentProjectsData?.data || [];
   const recentTasks = recentTasksData?.data || [];
 
+  // Fetch unread notifications count
+  const { data: notificationsData } = useQuery({
+    queryKey: ['notifications', 'unread-count', currentWorkspace?.id],
+    queryFn: async () => {
+      const response = await api.get('/notifications', {
+        params: { workspaceId: currentWorkspace?.id, isRead: false, limit: 1 }
+      });
+      return response.data;
+    },
+    enabled: !!currentWorkspace?.id,
+    refetchInterval: 30000 // Refetch every 30 seconds
+  });
+
+  const unreadCount = notificationsData?.data?.unreadCount || 0;
+
   const navigationItems = [
     {
       name: 'Dashboard',
@@ -79,6 +95,13 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, onClose }) => {
       icon: BarChart3,
       path: currentWorkspace ? `/workspace/${currentWorkspace.id}/analytics` : '/dashboard',
       requiresWorkspace: true
+    },
+    {
+      name: 'Notifications',
+      icon: Bell,
+      path: '/notifications',
+      requiresWorkspace: false,
+      badge: unreadCount
     },
     {
       name: 'Settings',
@@ -210,7 +233,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, onClose }) => {
                 onClick={handleNavClick}
                 className={`
                   flex items-center gap-3 px-3 py-2.5 rounded-lg
-                  transition-all duration-200
+                  transition-all duration-200 relative
                   ${isActive 
                     ? 'bg-primary-light/10 dark:bg-primary-dark/10 text-primary-light dark:text-primary-dark font-medium' 
                     : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'
@@ -218,11 +241,25 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, onClose }) => {
                   ${isCollapsed && !isMobile ? 'justify-center' : ''}
                 `}
               >
-                <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-primary-light dark:text-primary-dark' : ''}`} />
+                <div className="relative">
+                  <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-primary-light dark:text-primary-dark' : ''}`} />
+                  {item.badge > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-secondary-light text-white text-xs flex items-center justify-center rounded-full font-bold">
+                      {item.badge > 9 ? '9+' : item.badge}
+                    </span>
+                  )}
+                </div>
                 {!isCollapsed && (
-                  <span className="truncate">{item.name}</span>
+                  <>
+                    <span className="truncate flex-1">{item.name}</span>
+                    {item.badge > 0 && (
+                      <span className="ml-auto px-2 py-0.5 bg-secondary-light text-white text-xs rounded-full font-semibold">
+                        {item.badge}
+                      </span>
+                    )}
+                  </>
                 )}
-                {isActive && !isCollapsed && (
+                {isActive && !isCollapsed && !item.badge && (
                   <motion.div
                     layoutId="activeNav"
                     className="ml-auto w-1 h-6 bg-primary-light dark:bg-primary-dark rounded-full"
