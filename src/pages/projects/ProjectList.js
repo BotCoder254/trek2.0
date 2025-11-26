@@ -180,15 +180,27 @@ const ProjectList = () => {
                     </div>
                   </div>
                   <div className="flex -space-x-2">
-                    {project.members?.slice(0, 3).map((member, i) => (
+                    {project.members?.slice(0, 3).map((member) => {
+                      const user = member?.userId;
+                      if (!user) return null;
+                      return (
+                        <div
+                          key={user._id}
+                          className="w-6 h-6 rounded-full bg-primary-light dark:bg-primary-dark text-white text-xs flex items-center justify-center ring-2 ring-surface-light dark:ring-surface-dark"
+                          title={`${user.firstName} ${user.lastName}`}
+                        >
+                          {user.firstName?.[0]}{user.lastName?.[0]}
+                        </div>
+                      );
+                    })}
+                    {project.members?.length > 3 && (
                       <div
-                        key={i}
-                        className="w-6 h-6 rounded-full bg-primary-light dark:bg-primary-dark text-white text-xs flex items-center justify-center ring-2 ring-surface-light dark:ring-surface-dark"
-                        title={member.userId?.fullName}
+                        className="w-6 h-6 rounded-full bg-neutral-400 dark:bg-neutral-600 text-white text-xs flex items-center justify-center ring-2 ring-surface-light dark:ring-surface-dark"
+                        title={`+${project.members.length - 3} more`}
                       >
-                        {member.userId?.firstName?.[0]}{member.userId?.lastName?.[0]}
+                        +{project.members.length - 3}
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               </motion.div>

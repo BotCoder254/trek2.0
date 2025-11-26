@@ -42,6 +42,7 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [showGallery, setShowGallery] = useState(false);
   const [activeTab, setActiveTab] = useState('details'); // details, dependencies, history
+  const [showAssigneeModal, setShowAssigneeModal] = useState(false);
 
   const REACTIONS = [
     { icon: ThumbsUp, label: 'like', color: 'text-info-light' },
@@ -63,6 +64,18 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
     queryKey: ['project', projectId],
     queryFn: () => projectService.getProject(projectId),
     enabled: !!projectId
+  });
+
+  // Fetch workspace members
+  const { data: membersData } = useQuery({
+    queryKey: ['workspace-members', projectData?.data?.project?.workspaceId],
+    queryFn: async () => {
+      const response = await fetch(`/api/workspaces/${projectData?.data?.project?.workspaceId}/members`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      return response.json();
+    },
+    enabled: !!projectData?.data?.project?.workspaceId
   });
 
   // Update formData when task data changes
@@ -286,16 +299,24 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-neutral-500" />
               <div className="flex -space-x-2">
-                {task.assignees?.map((assignee, i) => (
+                {task.assignees?.map((assignee) => (
                   <div
-                    key={i}
-                    className="w-8 h-8 rounded-full bg-primary-light text-white text-sm flex items-center justify-center ring-2 ring-surface-light dark:ring-surface-dark"
-                    title={assignee.fullName}
+                    key={assignee._id}
+                    className="w-8 h-8 rounded-full bg-primary-light dark:bg-primary-dark text-white text-sm flex items-center justify-center ring-2 ring-surface-light dark:ring-surface-dark cursor-pointer hover:ring-4 transition-all"
+                    title={`${assignee.firstName} ${assignee.lastName}`}
+                    onClick={() => {
+                      const newAssignees = task.assignees.filter(a => a._id !== assignee._id).map(a => a._id);
+                      setFormData({ ...task, assignees: newAssignees });
+                      updateMutation.mutate({ assignees: newAssignees });
+                    }}
                   >
                     {assignee.firstName?.[0]}{assignee.lastName?.[0]}
                   </div>
                 ))}
-                <button className="w-8 h-8 rounded-full bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center hover:bg-neutral-300 dark:hover:bg-neutral-600">
+                <button 
+                  onClick={() => setShowAssigneeModal(true)}
+                  className="w-8 h-8 rounded-full bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors"
+                >
                   <Plus className="w-4 h-4" />
                 </button>
               </div>
@@ -653,6 +674,71 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
             setShowGallery(false);
           }}
         />
+      )}
+
+      {/* Assignee Modal */}
+      {showAssigneeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" onClick={() => setShowAssigneeModal(false)}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={(e) => e.stopPropagation()}
+            className="card p-6 w-full max-w-md max-h-[80vh] overflow-y-auto"
+          >
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">
+              Assign Members
+            </h3>
+            <div className="space-y-2">
+              {membersData?.data?.members?.map((member) => {
+                const user = member.userId || member.user;
+                const isAssigned = task.assignees?.some(a => a._id === user._id);
+                return (
+                  <button
+                    key={user._id}
+                    onClick={() => {
+                      const assigneeIds = task.assignees?.map(a => a._id) || [];
+                      const newAssignees = isAssigned
+                        ? assigneeIds.filter(id => id !== user._id)
+                        : [...assigneeIds, user._id];
+                      setFormData({ ...task, assignees: newAssignees });
+                      updateMutation.mutate({ assignees: newAssignees });
+                    }}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                      isAssigned
+                        ? 'bg-primary-light/10 dark:bg-primary-dark/10 border-2 border-primary-light dark:border-primary-dark'
+                        : 'bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+                    }`}
+                  >
+                    <div className="w-10 h-10 rounded-full bg-primary-light dark:bg-primary-dark text-white flex items-center justify-center">
+                      {user.firstName?.[0]}{user.lastName?.[0]}
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="font-medium text-neutral-900 dark:text-neutral-100">
+                        {user.firstName} {user.lastName}
+                      </p>
+                      <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                        {user.email}
+                      </p>
+                    </div>
+                    {isAssigned && (
+                      <div className="w-5 h-5 rounded-full bg-primary-light dark:bg-primary-dark text-white flex items-center justify-center">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => setShowAssigneeModal(false)}
+              className="w-full btn btn-secondary mt-4"
+            >
+              Done
+            </button>
+          </motion.div>
+        </div>
       )}
     </AnimatePresence>
   );
