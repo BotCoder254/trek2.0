@@ -174,6 +174,35 @@ const isS3Configured = () => {
          config.AWS_ACCESS_KEY_ID !== 'your-aws-access-key';
 };
 
+// Get presigned URL for direct upload (simplified for avatar)
+exports.getPresignedUrl = async (filename, mimetype) => {
+  // Try Cloudinary first
+  if (isCloudinaryConfigured()) {
+    const result = await exports.getCloudinarySignature(filename, 'avatars');
+    if (result.success) {
+      return {
+        uploadUrl: result.uploadUrl,
+        fileUrl: `https://res.cloudinary.com/${result.cloudName}/image/upload/${result.publicId}`,
+        provider: 'cloudinary'
+      };
+    }
+  }
+  
+  // Fallback to S3
+  if (isS3Configured()) {
+    const result = await exports.getS3PresignedUrl(filename, mimetype);
+    if (result.success) {
+      return {
+        uploadUrl: result.uploadUrl,
+        fileUrl: `https://${config.AWS_S3_BUCKET}.s3.${config.AWS_REGION}.amazonaws.com/${result.key}`,
+        provider: 's3'
+      };
+    }
+  }
+  
+  throw new Error('No file storage service configured');
+};
+
 // Unified upload interface - Cloudinary first, S3 fallback
 exports.getUploadCredentials = async (filename, mimetype) => {
   // Try Cloudinary first

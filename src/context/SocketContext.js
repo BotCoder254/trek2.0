@@ -117,6 +117,17 @@ export const SocketProvider = ({ children }) => {
       queryClient.invalidateQueries(['projects', data.workspaceId]);
     });
 
+    newSocket.on('profile:updated', (data) => {
+      console.log('👤 Profile updated:', data);
+      queryClient.invalidateQueries(['userProfile']);
+      queryClient.invalidateQueries(['currentUser']);
+    });
+
+    newSocket.on('preferences:updated', (data) => {
+      console.log('⚙️ Preferences updated:', data);
+      queryClient.invalidateQueries(['userProfile']);
+    });
+
     setSocket(newSocket);
 
     return () => {

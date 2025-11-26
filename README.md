@@ -59,6 +59,17 @@ A modern, full-stack project management platform built with the MERN stack (Mong
 - Smooth theme transitions
 - Complete dark mode coverage
 
+#### 6. User Profile & Settings
+- Comprehensive profile management
+- Avatar upload with drag-and-drop
+- Bio and timezone settings
+- Theme preferences (light/dark/system)
+- Display density options
+- Password change with validation
+- Email change with confirmation flow
+- Notification preferences
+- Activity history tracking
+
 ## 🛠️ Tech Stack
 
 ### Frontend
@@ -258,6 +269,17 @@ trek/
 - `GET /api/auth/me` - Get current user
 - `PUT /api/auth/profile` - Update profile
 - `POST /api/auth/change-password` - Change password
+- `POST /api/auth/forgot-password` - Request password reset
+- `POST /api/auth/reset-password/:token` - Reset password
+
+### Users
+- `GET /api/users/me` - Get user profile
+- `PATCH /api/users/me` - Update user profile
+- `POST /api/users/me/avatar/presign` - Get avatar upload URL
+- `PATCH /api/users/me/preferences` - Update preferences
+- `POST /api/users/me/email/change` - Initiate email change
+- `POST /api/users/confirm-email/:token` - Confirm email change
+- `GET /api/users/me/activity` - Get user activity history
 
 ### Workspaces
 - `POST /api/workspaces` - Create workspace
