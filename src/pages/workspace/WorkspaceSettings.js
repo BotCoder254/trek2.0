@@ -13,6 +13,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { workspaceService } from '../../services/workspaceService';
 import { inviteService } from '../../services/inviteService';
 import { getRoleBadgeColor, canModifyRole, ROLES } from '../../utils/roleUtils';
@@ -25,6 +26,8 @@ const WorkspaceSettings = () => {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteForm, setInviteForm] = useState({ email: '', role: 'Member' });
   const [inviteError, setInviteError] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ name: '', description: '' });
 
   // Fetch workspace details
   const { data: workspaceData } = useQuery({
@@ -51,6 +54,16 @@ const WorkspaceSettings = () => {
   const invites = invitesData?.data?.invites || [];
   const currentUserRole = workspace?.role;
 
+  // Initialize edit form when workspace data loads
+  React.useEffect(() => {
+    if (workspace) {
+      setEditForm({
+        name: workspace.name || '',
+        description: workspace.description || ''
+      });
+    }
+  }, [workspace]);
+
   // Invite mutation
   const inviteMutation = useMutation({
     mutationFn: (data) => inviteService.createInvite({
@@ -62,6 +75,7 @@ const WorkspaceSettings = () => {
       setShowInviteModal(false);
       setInviteForm({ email: '', role: 'Member' });
       setInviteError('');
+      toast.success('Invite sent successfully');
     },
     onError: (error) => {
       setInviteError(error.response?.data?.message || 'Failed to send invite');
@@ -74,6 +88,10 @@ const WorkspaceSettings = () => {
       workspaceService.updateMemberRole(workspaceId, membershipId, role),
     onSuccess: () => {
       queryClient.invalidateQueries(['workspace-members', workspaceId]);
+      toast.success('Member role updated');
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || 'Failed to update role');
     }
   });
 
@@ -83,6 +101,24 @@ const WorkspaceSettings = () => {
       workspaceService.removeMember(workspaceId, membershipId),
     onSuccess: () => {
       queryClient.invalidateQueries(['workspace-members', workspaceId]);
+      toast.success('Member removed successfully');
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || 'Failed to remove member');
+    }
+  });
+
+  // Update workspace mutation
+  const updateWorkspaceMutation = useMutation({
+    mutationFn: (data) => workspaceService.updateWorkspace(workspaceId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['workspace', workspaceId]);
+      queryClient.invalidateQueries(['workspaces']);
+      setIsEditing(false);
+      toast.success('Workspace updated successfully');
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || 'Failed to update workspace');
     }
   });
 
@@ -108,6 +144,22 @@ const WorkspaceSettings = () => {
     if (window.confirm(`Remove ${memberName} from workspace?`)) {
       removeMemberMutation.mutate(membershipId);
     }
+  };
+
+  const handleSaveWorkspace = () => {
+    if (!editForm.name.trim()) {
+      alert('Workspace name is required');
+      return;
+    }
+    updateWorkspaceMutation.mutate(editForm);
+  };
+
+  const handleCancelEdit = () => {
+    setEditForm({
+      name: workspace.name || '',
+      description: workspace.description || ''
+    });
+    setIsEditing(false);
   };
 
   const copyInviteLink = (token) => {
@@ -202,26 +254,70 @@ const WorkspaceSettings = () => {
         >
           {activeTab === 'overview' && (
             <div className="card p-6">
-              <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100 mb-4">
-                Workspace Information
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">
+                  Workspace Information
+                </h2>
+                {(currentUserRole === ROLES.OWNER || currentUserRole === ROLES.MANAGER) && (
+                  <div className="flex gap-2">
+                    {isEditing ? (
+                      <>
+                        <button
+                          onClick={handleCancelEdit}
+                          className="btn btn-secondary btn-sm"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleSaveWorkspace}
+                          disabled={updateWorkspaceMutation.isPending}
+                          className="btn btn-primary btn-sm flex items-center gap-2"
+                        >
+                          {updateWorkspaceMutation.isPending ? (
+                            <>
+                              <Loader className="w-4 h-4 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4" />
+                              Save
+                            </>
+                          )}
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="btn btn-secondary btn-sm flex items-center gap-2"
+                      >
+                        <Settings className="w-4 h-4" />
+                        Edit
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
               <div className="space-y-4">
                 <div>
                   <label className="label">Workspace Name</label>
                   <input
                     type="text"
-                    value={workspace.name}
-                    disabled
-                    className="input opacity-60"
+                    value={isEditing ? editForm.name : workspace.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    disabled={!isEditing}
+                    className={`input ${!isEditing ? 'opacity-60' : ''}`}
                   />
                 </div>
                 <div>
                   <label className="label">Description</label>
                   <textarea
-                    value={workspace.description || ''}
-                    disabled
+                    value={isEditing ? editForm.description : (workspace.description || '')}
+                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                    disabled={!isEditing}
                     rows="3"
-                    className="input resize-none opacity-60"
+                    className={`input resize-none ${!isEditing ? 'opacity-60' : ''}`}
+                    placeholder="Add a description for your workspace..."
                   />
                 </div>
                 <div>
