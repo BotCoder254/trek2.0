@@ -210,7 +210,7 @@ router.put('/:taskId', protect, [
   validate
 ], async (req, res, next) => {
   try {
-    const task = await Task.findById(req.params.taskId);
+    const task = await Task.findById(req.params.taskId).populate('projectId');
 
     if (!task) {
       return res.status(404).json({
@@ -219,11 +219,25 @@ router.put('/:taskId', protect, [
       });
     }
 
+    // Check permission
+    const membership = await Membership.findOne({
+      userId: req.user._id,
+      workspaceId: task.projectId.workspaceId,
+      isActive: true
+    });
+
+    if (!membership || !Membership.hasPermission(membership.role, 'tasks.update')) {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have permission to update tasks'
+      });
+    }
+
     const { title, description, status, priority, epicId, assignees, dueDate, tags, order, labels, checklist, estimate, timeSpent, position } = req.body;
 
     const oldTask = { ...task.toObject() };
 
-    if (title) task.title = title;
+    if (title !== undefined) task.title = title;
     if (description !== undefined) task.description = description;
     if (status && status !== task.status) {
       const project = await Project.findById(task.projectId);
@@ -234,19 +248,26 @@ router.put('/:taskId', protect, [
       });
       task.status = status;
     }
-    if (priority) task.priority = priority;
+    if (priority !== undefined) task.priority = priority;
     if (epicId !== undefined) task.epicId = epicId;
-    if (assignees) task.assignees = assignees;
+    if (assignees !== undefined) task.assignees = assignees;
     if (dueDate !== undefined) task.dueDate = dueDate;
-    if (tags) task.tags = tags;
-    if (labels) task.labels = labels;
-    if (checklist) task.checklist = checklist;
+    if (tags !== undefined) task.tags = tags;
+    if (labels !== undefined) task.labels = labels;
+    if (checklist !== undefined) task.checklist = checklist;
     if (estimate !== undefined) task.estimate = estimate;
     if (timeSpent !== undefined) task.timeSpent = timeSpent;
     if (order !== undefined) task.order = order;
     if (position !== undefined) task.position = position;
 
     await task.save();
+    
+    console.log('Task updated successfully:', {
+      taskId: task._id,
+      title: task.title,
+      description: task.description,
+      checklist: task.checklist
+    });
 
     // If task status changed to 'done', check if it unblocks any other tasks
     if (status === 'done' && oldTask.status !== 'done' && task.blockedBy && task.blockedBy.length > 0) {

@@ -53,11 +53,15 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
   const { data: taskData, isLoading } = useQuery({
     queryKey: ['task', taskId],
     queryFn: () => projectService.getTask(taskId),
-    enabled: !!taskId,
-    onSuccess: (data) => {
-      setFormData(data.data.task);
-    }
+    enabled: !!taskId
   });
+
+  // Update formData when task data changes
+  React.useEffect(() => {
+    if (taskData?.data?.task) {
+      setFormData(taskData.data.task);
+    }
+  }, [taskData]);
 
   // Fetch comments
   const { data: commentsData } = useQuery({
@@ -74,9 +78,12 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
   // Update task mutation
   const updateMutation = useMutation({
     mutationFn: (data) => projectService.updateTask(taskId, data),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries(['task', taskId]);
       queryClient.invalidateQueries(['tasks', projectId]);
+      if (response?.data?.task) {
+        setFormData(response.data.task);
+      }
       setIsEditing(false);
     }
   });
@@ -100,7 +107,7 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
     }
   });
 
-  const task = formData;
+  const task = taskData?.data?.task || formData;
   const comments = commentsData?.data?.comments || [];
 
   const handleSave = () => {
