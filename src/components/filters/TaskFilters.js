@@ -9,6 +9,7 @@ import api from '../../services/api';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
+import LabelsFilter from './LabelsFilter';
 
 const TaskFilters = ({ filters, onFiltersChange, projectId, canSaveWorkspaceWide = false }) => {
   const { currentWorkspace } = useWorkspace();
@@ -202,6 +203,24 @@ const TaskFilters = ({ filters, onFiltersChange, projectId, canSaveWorkspaceWide
               </motion.div>
             )}
 
+            {filters.labels && filters.labels.length > 0 && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0 }}
+                className="flex items-center gap-2 px-3 py-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full text-sm"
+              >
+                <span className="font-medium">Labels:</span>
+                <span>{filters.labels.length} selected</span>
+                <button
+                  onClick={() => handleRemoveFilter('labels')}
+                  className="hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded-full p-0.5"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </motion.div>
+            )}
+
             <button
               onClick={handleClearAll}
               className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100"
@@ -344,6 +363,19 @@ const TaskFilters = ({ filters, onFiltersChange, projectId, canSaveWorkspaceWide
                     placeholder="To"
                   />
                 </div>
+              </div>
+
+              {/* Labels Filter */}
+              <div>
+                <label className="label flex items-center gap-2 mb-2">
+                  <Tag className="w-4 h-4" />
+                  Labels
+                </label>
+                <LabelsFilter
+                  workspaceId={currentWorkspace?.id}
+                  selectedLabels={filters.labels || []}
+                  onChange={(labels) => handleFilterChange('labels', labels)}
+                />
               </div>
             </div>
           </motion.div>

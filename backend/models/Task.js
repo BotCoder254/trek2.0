@@ -43,8 +43,8 @@ const taskSchema = new mongoose.Schema({
     trim: true
   }],
   labels: [{
-    name: String,
-    color: String
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Label'
   }],
   attachments: [{
     name: String,

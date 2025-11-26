@@ -210,16 +210,18 @@ const KanbanBoard = ({ tasks = [], projectId, onTaskClick }) => {
                       <div className="flex flex-wrap gap-1 mb-3">
                         {task.labels.slice(0, 3).map((label, i) => (
                           <span
-                            key={i}
-                            className="px-2 py-0.5 rounded text-xs font-medium"
-                            style={{
-                              backgroundColor: `${label.color}20`,
-                              color: label.color
-                            }}
+                            key={label._id || i}
+                            className="px-2 py-0.5 rounded-full text-xs font-medium text-white"
+                            style={{ backgroundColor: label.color }}
                           >
                             {label.name}
                           </span>
                         ))}
+                        {task.labels.length > 3 && (
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-neutral-300 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300">
+                            +{task.labels.length - 3}
+                          </span>
+                        )}
                       </div>
                     )}
 

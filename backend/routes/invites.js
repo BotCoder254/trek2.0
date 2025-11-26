@@ -79,6 +79,7 @@ router.post('/', protect, [
     }
 
     // Create invite
+    const { expiryDays = 7, singleUse = true, customMessage, sendEmail = true } = req.body;
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + expiryDays);
 

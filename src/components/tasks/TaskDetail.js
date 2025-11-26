@@ -13,6 +13,8 @@ import ImageGallery from '../attachments/ImageGallery';
 import TaskDependencies from './TaskDependencies';
 import TaskHistory from './TaskHistory';
 import BlockedBadge from './BlockedBadge';
+import LabelManager from '../labels/LabelManager';
+import LabelChip from '../labels/LabelChip';
 
 const PRIORITIES = [
   { value: 'low', label: 'Low', color: 'text-neutral-400' },
@@ -54,6 +56,13 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
     queryKey: ['task', taskId],
     queryFn: () => projectService.getTask(taskId),
     enabled: !!taskId
+  });
+
+  // Fetch project to get workspaceId
+  const { data: projectData } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => projectService.getProject(projectId),
+    enabled: !!projectId
   });
 
   // Update formData when task data changes
@@ -319,6 +328,22 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
               />
             </div>
           </div>
+
+          {/* Labels */}
+          <LabelManager
+            workspaceId={projectData?.data?.project?.workspaceId}
+            selectedLabels={task.labels || []}
+            onLabelToggle={(label) => {
+              const labelIds = task.labels?.map(l => l._id || l) || [];
+              const isSelected = labelIds.includes(label._id);
+              const newLabels = isSelected
+                ? labelIds.filter(id => id !== label._id)
+                : [...labelIds, label._id];
+              setFormData({ ...task, labels: newLabels });
+              updateMutation.mutate({ labels: newLabels });
+            }}
+            canEdit={canEdit}
+          />
 
           {/* Description */}
           <div>

@@ -22,13 +22,21 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     if (!currentWorkspace?.id || !authService.isAuthenticated()) {
+      if (socket) {
+        socket.close();
+        setSocket(null);
+        setIsConnected(false);
+      }
       return;
     }
 
     // Connect to Socket.io server
     const newSocket = io(process.env.REACT_APP_API_URL || 'http://localhost:5000', {
       query: { workspaceId: currentWorkspace.id },
-      transports: ['websocket', 'polling']
+      transports: ['polling', 'websocket'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 5
     });
 
     newSocket.on('connect', () => {

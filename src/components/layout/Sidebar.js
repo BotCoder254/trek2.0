@@ -243,7 +243,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, onClose }) => {
               >
                 <div className="relative">
                   <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-primary-light dark:text-primary-dark' : ''}`} />
-                  {item.badge > 0 && (
+                  {isCollapsed && item.badge > 0 && (
                     <span className="absolute -top-1 -right-1 w-4 h-4 bg-secondary-light text-white text-xs flex items-center justify-center rounded-full font-bold">
                       {item.badge > 9 ? '9+' : item.badge}
                     </span>
@@ -257,13 +257,13 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, onClose }) => {
                         {item.badge}
                       </span>
                     )}
+                    {isActive && !item.badge && (
+                      <motion.div
+                        layoutId="activeNav"
+                        className="ml-auto w-1 h-6 bg-primary-light dark:bg-primary-dark rounded-full"
+                      />
+                    )}
                   </>
-                )}
-                {isActive && !isCollapsed && !item.badge && (
-                  <motion.div
-                    layoutId="activeNav"
-                    className="ml-auto w-1 h-6 bg-primary-light dark:bg-primary-dark rounded-full"
-                  />
                 )}
               </Link>
             );

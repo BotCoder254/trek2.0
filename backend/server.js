@@ -34,11 +34,11 @@ app.use(cookieParser());
 // Socket.io authentication and workspace rooms
 io.use((socket, next) => {
   const workspaceId = socket.handshake.query.workspaceId;
-  if (workspaceId) {
+  if (workspaceId && workspaceId !== 'undefined' && workspaceId !== 'null') {
     socket.workspaceId = workspaceId;
     next();
   } else {
-    next(new Error('Workspace ID required'));
+    next(new Error('Valid workspace ID required'));
   }
 });
 
@@ -48,8 +48,12 @@ io.on('connection', (socket) => {
   // Join workspace room
   socket.join(`workspace:${socket.workspaceId}`);
   
-  socket.on('disconnect', () => {
-    console.log(`🔌 Client disconnected from workspace: ${socket.workspaceId}`);
+  socket.on('disconnect', (reason) => {
+    console.log(`🔌 Client disconnected from workspace: ${socket.workspaceId}, reason: ${reason}`);
+  });
+  
+  socket.on('error', (error) => {
+    console.error(`🔌 Socket error for workspace ${socket.workspaceId}:`, error);
   });
 });
 
@@ -66,6 +70,7 @@ app.use('/api/search', require('./routes/search'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/views', require('./routes/savedViews'));
+app.use('/api/labels', require('./routes/labels'));
 
 // Health check
 app.get('/api/health', (req, res) => {

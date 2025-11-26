@@ -152,18 +152,23 @@ router.get('/calendar', protect, async (req, res, next) => {
 // @access  Private
 router.get('/project/:projectId', protect, async (req, res, next) => {
   try {
-    const { epicId, status, assignee } = req.query;
+    const { epicId, status, assignee, labels } = req.query;
     
     const query = { projectId: req.params.projectId };
     
     if (epicId) query.epicId = epicId === 'null' ? null : epicId;
     if (status) query.status = status;
     if (assignee) query.assignees = assignee;
+    if (labels) {
+      const labelIds = Array.isArray(labels) ? labels : [labels];
+      query.labels = { $in: labelIds };
+    }
 
     const tasks = await Task.find(query)
       .populate('assignees', 'firstName lastName email avatar')
       .populate('createdBy', 'firstName lastName email avatar')
       .populate('epicId', 'title color')
+      .populate('labels')
       .sort('order');
 
     res.json({
@@ -184,7 +189,8 @@ router.get('/:taskId', protect, async (req, res, next) => {
       .populate('assignees', 'firstName lastName email avatar')
       .populate('createdBy', 'firstName lastName email avatar')
       .populate('epicId', 'title color')
-      .populate('projectId', 'name color');
+      .populate('projectId', 'name color')
+      .populate('labels');
 
     if (!task) {
       return res.status(404).json({
@@ -302,7 +308,8 @@ router.put('/:taskId', protect, [
     const updatedTask = await Task.findById(task._id)
       .populate('assignees', 'firstName lastName email avatar')
       .populate('createdBy', 'firstName lastName email avatar')
-      .populate('epicId', 'title color');
+      .populate('epicId', 'title color')
+      .populate('labels');
 
     res.json({
       success: true,

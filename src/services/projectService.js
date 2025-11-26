@@ -96,6 +96,30 @@ export const projectService = {
   deleteTask: async (taskId) => {
     const response = await api.delete(`/tasks/${taskId}`);
     return response.data;
+  },
+
+  // Get workspace labels
+  getLabels: async (workspaceId) => {
+    const response = await api.get('/labels', { params: { workspaceId } });
+    return response.data;
+  },
+
+  // Create label
+  createLabel: async (labelData) => {
+    const response = await api.post('/labels', labelData);
+    return response.data;
+  },
+
+  // Update label
+  updateLabel: async (labelId, labelData) => {
+    const response = await api.patch(`/labels/${labelId}`, labelData);
+    return response.data;
+  },
+
+  // Delete label
+  deleteLabel: async (labelId) => {
+    const response = await api.delete(`/labels/${labelId}`);
+    return response.data;
   }
 };
 

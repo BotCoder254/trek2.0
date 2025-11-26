@@ -3,12 +3,12 @@ const config = require('../config/env.config');
 
 // Create transporter
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-  port: process.env.EMAIL_PORT || 587,
+  host: config.EMAIL_HOST || 'smtp.gmail.com',
+  port: config.EMAIL_PORT || 587,
   secure: false,
   auth: {
-    user: process.env.EMAIL_USER || 'your-email@gmail.com',
-    pass: process.env.EMAIL_PASSWORD || 'your-app-password'
+    user: config.EMAIL_USER,
+    pass: config.EMAIL_PASSWORD
   }
 });
 
@@ -216,7 +216,7 @@ exports.sendInviteEmail = async ({ to, workspaceName, inviterName, role, inviteL
 
   try {
     await transporter.sendMail({
-      from: `"TREK" <${process.env.EMAIL_USER || 'noreply@trek.app'}>`,
+      from: `"TREK" <${config.EMAIL_USER}>`,
       to,
       subject: `You're invited to join ${workspaceName} on TREK`,
       html: emailTemplate
@@ -263,7 +263,7 @@ function getRolePermissions(role) {
 exports.sendEmail = async ({ to, subject, html, text }) => {
   try {
     await transporter.sendMail({
-      from: `"TREK" <${process.env.EMAIL_USER || 'noreply@trek.app'}>`,
+      from: `"TREK" <${config.EMAIL_USER}>`,
       to,
       subject,
       html,

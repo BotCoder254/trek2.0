@@ -21,8 +21,8 @@ const inviteSchema = new mongoose.Schema({
   },
   token: {
     type: String,
-    required: true,
-    unique: true
+    unique: true,
+    sparse: true
   },
   invitedBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -67,9 +67,9 @@ const inviteSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Generate unique token before saving
-inviteSchema.pre('save', function(next) {
-  if (this.isNew && !this.token) {
+// Generate unique token before validation
+inviteSchema.pre('validate', function(next) {
+  if (!this.token) {
     this.token = crypto.randomBytes(32).toString('hex');
   }
   next();
