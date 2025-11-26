@@ -78,10 +78,7 @@ router.post('/signup', [
 
         // Add user to all workspace projects
         const Project = require('../models/Project');
-        const projects = await Project.find({ 
-          workspaceId: invite.workspaceId._id,
-          visibility: 'workspace'
-        });
+        const projects = await Project.find({ workspaceId: invite.workspaceId._id });
         
         for (const project of projects) {
           if (!project.members.some(m => m.userId.toString() === user._id.toString())) {
@@ -182,10 +179,7 @@ router.post('/login', [
 
           // Add user to all workspace projects
           const Project = require('../models/Project');
-          const projects = await Project.find({ 
-            workspaceId: invite.workspaceId._id,
-            visibility: 'workspace'
-          });
+          const projects = await Project.find({ workspaceId: invite.workspaceId._id });
           
           for (const project of projects) {
             if (!project.members.some(m => m.userId.toString() === user._id.toString())) {

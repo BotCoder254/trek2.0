@@ -107,6 +107,11 @@ export const SocketProvider = ({ children }) => {
       queryClient.invalidateQueries(['tasks']);
     });
 
+    newSocket.on('project:member-added', (data) => {
+      console.log('👥 Project member added:', data);
+      queryClient.invalidateQueries(['projects', data.workspaceId]);
+    });
+
     setSocket(newSocket);
 
     return () => {

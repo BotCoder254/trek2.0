@@ -252,16 +252,21 @@ router.post('/:token/accept', protect, async (req, res, next) => {
 
     // Add user to all workspace projects
     const Project = require('../models/Project');
-    const projects = await Project.find({ 
-      workspaceId: invite.workspaceId._id,
-      visibility: 'workspace'
-    });
+    const projects = await Project.find({ workspaceId: invite.workspaceId._id });
     
     for (const project of projects) {
       if (!project.members.some(m => m.userId.toString() === req.user._id.toString())) {
         project.members.push({ userId: req.user._id, role: 'member' });
         await project.save();
       }
+    }
+
+    // Emit socket event to update projects
+    const io = req.app.get('socketio');
+    if (io) {
+      io.to(`workspace:${invite.workspaceId._id}`).emit('project:member-added', {
+        workspaceId: invite.workspaceId._id
+      });
     }
 
     res.json({
