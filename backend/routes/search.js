@@ -56,8 +56,20 @@ router.get('/', protect, async (req, res, next) => {
       })
       .populate('projectId', 'name color')
       .populate('assignees', 'firstName lastName email avatar')
+      .populate('labels')
       .limit(10)
       .sort('-updatedAt');
+    }
+
+    // Search labels
+    if (!type || type === 'labels') {
+      const Label = require('../models/Label');
+      results.labels = await Label.find({
+        workspaceId,
+        name: searchRegex
+      })
+      .limit(10)
+      .sort('name');
     }
 
     // Search projects

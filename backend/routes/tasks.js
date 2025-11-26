@@ -95,7 +95,7 @@ router.post('/', protect, [
 // @access  Private
 router.get('/calendar', protect, async (req, res, next) => {
   try {
-    const { workspaceId, start, end } = req.query;
+    const { workspaceId, start, end, status, priority, labels } = req.query;
     
     if (!workspaceId) {
       return res.status(400).json({
@@ -131,11 +131,27 @@ router.get('/calendar', protect, async (req, res, next) => {
       if (end) query.dueDate.$lte = new Date(end);
     }
 
+    if (status) {
+      const statusArray = Array.isArray(status) ? status : [status];
+      query.status = { $in: statusArray };
+    }
+
+    if (priority) {
+      const priorityArray = Array.isArray(priority) ? priority : [priority];
+      query.priority = { $in: priorityArray };
+    }
+
+    if (labels) {
+      const labelIds = Array.isArray(labels) ? labels : [labels];
+      query.labels = { $in: labelIds };
+    }
+
     const tasks = await Task.find(query)
       .populate('assignees', 'firstName lastName email avatar')
       .populate('createdBy', 'firstName lastName email avatar')
       .populate('epicId', 'title color')
       .populate('projectId', 'name color')
+      .populate('labels')
       .sort('dueDate');
 
     res.json({

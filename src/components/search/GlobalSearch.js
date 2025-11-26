@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, CheckSquare, FolderKanban, User, Loader } from 'lucide-react';
+import { Search, X, CheckSquare, FolderKanban, User, Loader, Tag } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../services/api';
 import { useWorkspace } from '../../context/WorkspaceContext';
@@ -46,7 +46,7 @@ const GlobalSearch = ({ isOpen, onClose }) => {
   });
 
   const results = searchData?.data || {};
-  const hasResults = results.tasks?.length > 0 || results.projects?.length > 0 || results.members?.length > 0;
+  const hasResults = results.tasks?.length > 0 || results.projects?.length > 0 || results.members?.length > 0 || results.labels?.length > 0;
 
   const handleTaskClick = (task) => {
     navigate(`/workspace/${currentWorkspace.id}/projects/${task.projectId._id}`);
@@ -98,7 +98,7 @@ const GlobalSearch = ({ isOpen, onClose }) => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Search tasks, projects, members..."
+                placeholder="Search tasks, projects, members, labels..."
                 className="flex-1 bg-transparent border-none focus:outline-none text-lg text-neutral-900 dark:text-neutral-100 placeholder-neutral-400"
               />
               {isLoading && (
@@ -150,7 +150,7 @@ const GlobalSearch = ({ isOpen, onClose }) => {
                             <p className="font-medium text-neutral-900 dark:text-neutral-100 truncate">
                               {task.title}
                             </p>
-                            <div className="flex items-center gap-2 mt-1">
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
                               {task.projectId && (
                                 <span className="text-xs text-neutral-600 dark:text-neutral-400">
                                   {task.projectId.name}
@@ -163,6 +163,15 @@ const GlobalSearch = ({ isOpen, onClose }) => {
                               }`}>
                                 {task.status}
                               </span>
+                              {task.labels && task.labels.slice(0, 2).map((label) => (
+                                <span
+                                  key={label._id}
+                                  className="text-xs px-2 py-0.5 rounded-full text-white"
+                                  style={{ backgroundColor: label.color }}
+                                >
+                                  {label.name}
+                                </span>
+                              ))}
                             </div>
                           </div>
                         </motion.button>
@@ -206,7 +215,7 @@ const GlobalSearch = ({ isOpen, onClose }) => {
 
                   {/* Members */}
                   {results.members && results.members.length > 0 && (
-                    <div>
+                    <div className="mb-4">
                       <div className="px-3 py-2 text-xs font-semibold text-neutral-500 uppercase">
                         Members ({results.members.length})
                       </div>
@@ -228,6 +237,27 @@ const GlobalSearch = ({ isOpen, onClose }) => {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {/* Labels */}
+                  {results.labels && results.labels.length > 0 && (
+                    <div>
+                      <div className="px-3 py-2 text-xs font-semibold text-neutral-500 uppercase">
+                        Labels ({results.labels.length})
+                      </div>
+                      <div className="flex flex-wrap gap-2 px-3 py-2">
+                        {results.labels.map((label) => (
+                          <span
+                            key={label._id}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium text-white"
+                            style={{ backgroundColor: label.color }}
+                          >
+                            <Tag className="w-3 h-3" />
+                            {label.name}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

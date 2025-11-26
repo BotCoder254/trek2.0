@@ -25,6 +25,8 @@ const CalendarView = () => {
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [draggedTask, setDraggedTask] = useState(null);
   const [view, setView] = useState('month'); // month, week, day
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({ status: [], priority: [], labels: [] });
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -41,11 +43,11 @@ const CalendarView = () => {
 
   // Fetch calendar tasks
   const { data: tasksData } = useQuery({
-    queryKey: ['calendar-tasks', workspaceId, year, month],
+    queryKey: ['calendar-tasks', workspaceId, year, month, filters],
     queryFn: async () => {
       const { start, end } = getDateRange();
       const response = await api.get(`/tasks/calendar`, {
-        params: { workspaceId, start, end }
+        params: { workspaceId, start, end, ...filters }
       });
       return response.data;
     },
@@ -184,12 +186,85 @@ const CalendarView = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <button className="btn btn-secondary flex items-center gap-2">
+            <button 
+              onClick={() => setShowFilters(!showFilters)}
+              className="btn btn-secondary flex items-center gap-2"
+            >
               <Filter className="w-4 h-4" />
               Filter
+              {(filters.status.length > 0 || filters.priority.length > 0 || filters.labels.length > 0) && (
+                <span className="bg-primary-light text-white text-xs px-2 py-0.5 rounded-full">
+                  {filters.status.length + filters.priority.length + filters.labels.length}
+                </span>
+              )}
             </button>
           </div>
         </div>
+
+        {/* Filters */}
+        {showFilters && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="card p-4 mb-4"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="label mb-2">Status</label>
+                <div className="space-y-2">
+                  {['todo', 'in-progress', 'in-review', 'done'].map((status) => (
+                    <label key={status} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={filters.status.includes(status)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFilters({ ...filters, status: [...filters.status, status] });
+                          } else {
+                            setFilters({ ...filters, status: filters.status.filter(s => s !== status) });
+                          }
+                        }}
+                        className="w-4 h-4 rounded"
+                      />
+                      <span className="text-sm capitalize">{status.replace('-', ' ')}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="label mb-2">Priority</label>
+                <div className="space-y-2">
+                  {['low', 'medium', 'high', 'urgent'].map((priority) => (
+                    <label key={priority} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={filters.priority.includes(priority)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFilters({ ...filters, priority: [...filters.priority, priority] });
+                          } else {
+                            setFilters({ ...filters, priority: filters.priority.filter(p => p !== priority) });
+                          }
+                        }}
+                        className="w-4 h-4 rounded"
+                      />
+                      <span className="text-sm capitalize">{priority}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <button
+                  onClick={() => setFilters({ status: [], priority: [], labels: [] })}
+                  className="btn btn-secondary btn-sm w-full"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Calendar Grid */}
         <div className="card p-6">
@@ -248,6 +323,18 @@ const CalendarView = () => {
                             {task.projectId && (
                               <div className="text-neutral-600 dark:text-neutral-400 truncate text-xs mt-0.5">
                                 {task.projectId.name}
+                              </div>
+                            )}
+                            {task.labels && task.labels.length > 0 && (
+                              <div className="flex gap-1 mt-1">
+                                {task.labels.slice(0, 2).map((label) => (
+                                  <span
+                                    key={label._id}
+                                    className="w-2 h-2 rounded-full"
+                                    style={{ backgroundColor: label.color }}
+                                    title={label.name}
+                                  />
+                                ))}
                               </div>
                             )}
                           </motion.div>
