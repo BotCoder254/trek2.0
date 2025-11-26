@@ -2,6 +2,21 @@
 
 A modern, full-stack project management platform built with the MERN stack (MongoDB, Express, React, Node.js).
 
+## 📸 Screenshots
+
+<table>
+  <tr>
+    <td><img src="projectimages/Screenshot From 2025-11-26 13-31-18.png" alt="Dashboard" width="100%"/></td>
+    <td><img src="projectimages/Screenshot From 2025-11-26 13-32-48.png" alt="Projects" width="100%"/></td>
+    <td><img src="projectimages/Screenshot From 2025-11-26 13-32-55.png" alt="Tasks" width="100%"/></td>
+  </tr>
+  <tr>
+    <td><img src="projectimages/Screenshot From 2025-11-26 18-25-45.png" alt="Analytics" width="100%"/></td>
+    <td><img src="projectimages/Screenshot From 2025-11-26 18-25-54.png" alt="Calendar" width="100%"/></td>
+    <td><img src="projectimages/Screenshot From 2025-11-26 18-26-13.png" alt="Settings" width="100%"/></td>
+  </tr>
+</table>
+
 ## 🚀 Features
 
 ### ✅ Completed Features
