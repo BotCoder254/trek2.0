@@ -45,7 +45,7 @@ const checkIfBlocked = async (taskId) => {
 router.post('/:taskId/dependencies', protect, async (req, res, next) => {
   try {
     const { dependencyId } = req.body;
-    const task = await Task.findById(req.params.taskId);
+    const task = await Task.findById(req.params.taskId).populate('projectId');
     
     if (!task) {
       return res.status(404).json({
@@ -98,8 +98,8 @@ router.post('/:taskId/dependencies', protect, async (req, res, next) => {
     
     // Create activity log
     await Activity.create({
-      workspaceId: task.workspaceId,
-      projectId: task.projectId,
+      workspaceId: task.projectId.workspaceId,
+      projectId: task.projectId._id,
       taskId: task._id,
       userId: req.user._id,
       type: 'dependency_added',
@@ -112,7 +112,7 @@ router.post('/:taskId/dependencies', protect, async (req, res, next) => {
     // Emit socket event
     const io = req.app.get('io');
     if (io) {
-      io.to(`workspace:${task.workspaceId}`).emit('task:updated', {
+      io.to(`workspace:${task.projectId.workspaceId}`).emit('task:updated', {
         taskId: task._id,
         type: 'dependency_added'
       });
@@ -137,7 +137,7 @@ router.post('/:taskId/dependencies', protect, async (req, res, next) => {
 // @access  Private
 router.delete('/:taskId/dependencies/:dependencyId', protect, async (req, res, next) => {
   try {
-    const task = await Task.findById(req.params.taskId);
+    const task = await Task.findById(req.params.taskId).populate('projectId');
     
     if (!task) {
       return res.status(404).json({
@@ -167,8 +167,8 @@ router.delete('/:taskId/dependencies/:dependencyId', protect, async (req, res, n
     
     // Create activity log
     await Activity.create({
-      workspaceId: task.workspaceId,
-      projectId: task.projectId,
+      workspaceId: task.projectId.workspaceId,
+      projectId: task.projectId._id,
       taskId: task._id,
       userId: req.user._id,
       type: 'dependency_removed',
@@ -180,7 +180,7 @@ router.delete('/:taskId/dependencies/:dependencyId', protect, async (req, res, n
     // Emit socket event
     const io = req.app.get('io');
     if (io) {
-      io.to(`workspace:${task.workspaceId}`).emit('task:updated', {
+      io.to(`workspace:${task.projectId.workspaceId}`).emit('task:updated', {
         taskId: task._id,
         type: 'dependency_removed'
       });
@@ -229,7 +229,7 @@ router.get('/:taskId/dependencies', protect, async (req, res, next) => {
 // @access  Private (called when dependency task is completed)
 router.post('/:taskId/check-unblock', protect, async (req, res, next) => {
   try {
-    const task = await Task.findById(req.params.taskId);
+    const task = await Task.findById(req.params.taskId).populate('projectId');
     
     if (!task) {
       return res.status(404).json({
@@ -249,14 +249,14 @@ router.post('/:taskId/check-unblock', protect, async (req, res, next) => {
       if (task.assignees && task.assignees.length > 0) {
         for (const assigneeId of task.assignees) {
           await Notification.create({
-            workspaceId: task.workspaceId,
+            workspaceId: task.projectId.workspaceId,
             userId: assigneeId,
             type: 'dependency_unblocked',
             title: 'Task Unblocked',
             message: `Task "${task.title}" is now unblocked and ready to work on`,
-            link: `/workspace/${task.workspaceId}/projects/${task.projectId}`,
+            link: `/workspace/${task.projectId.workspaceId}/projects/${task.projectId._id}`,
             taskId: task._id,
-            projectId: task.projectId,
+            projectId: task.projectId._id,
             triggeredBy: req.user._id
           });
         }
@@ -265,7 +265,7 @@ router.post('/:taskId/check-unblock', protect, async (req, res, next) => {
       // Emit socket event
       const io = req.app.get('io');
       if (io) {
-        io.to(`workspace:${task.workspaceId}`).emit('dependency:unblocked', {
+        io.to(`workspace:${task.projectId.workspaceId}`).emit('dependency:unblocked', {
           taskId: task._id
         });
       }

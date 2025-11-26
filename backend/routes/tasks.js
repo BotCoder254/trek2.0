@@ -240,6 +240,13 @@ router.put('/:taskId', protect, [
     if (title !== undefined) task.title = title;
     if (description !== undefined) task.description = description;
     if (status && status !== task.status) {
+      // Check if task is blocked and prevent status change to in-progress or done
+      if (task.isBlocked && (status === 'in-progress' || status === 'done')) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot change status of blocked task. Complete dependencies first.'
+        });
+      }
       const project = await Project.findById(task.projectId);
       await logActivity('task.status_changed', task._id, req.user._id, project.workspaceId, task.projectId, {
         field: 'status',
@@ -348,6 +355,15 @@ router.patch('/:taskId/status', protect, [
       return res.status(404).json({
         success: false,
         message: 'Task not found'
+      });
+    }
+
+    // Check if task is blocked and prevent status change to in-progress or done
+    if (task.isBlocked && (status === 'in-progress' || status === 'done')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot change status of blocked task. Complete dependencies first.',
+        isBlocked: true
       });
     }
 

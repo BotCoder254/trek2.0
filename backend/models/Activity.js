@@ -29,7 +29,10 @@ const activitySchema = new mongoose.Schema({
       'comment.added',
       'attachment.added',
       'project.created',
-      'member.added'
+      'member.added',
+      'dependency_added',
+      'dependency_removed',
+      'dependency_unblocked'
     ],
     required: true
   },
