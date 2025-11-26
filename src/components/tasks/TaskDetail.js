@@ -527,49 +527,50 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
                       </div>
 
                       {/* Reactions */}
-                      <div className="flex items-center gap-3 mt-2 relative">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowReactions(showReactions === comment._id ? null : comment._id);
-                          }}
-                          className="text-xs font-medium text-neutral-500 hover:text-primary-light dark:hover:text-primary-dark flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-all"
-                        >
-                          <Smile className="w-3.5 h-3.5" />
-                          React
-                        </button>
+                      <div className="flex items-center gap-3 mt-2">
+                        <div className="relative">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowReactions(showReactions === comment._id ? null : comment._id);
+                            }}
+                            className="text-xs font-medium text-neutral-500 hover:text-primary-light dark:hover:text-primary-dark flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-all"
+                          >
+                            <Smile className="w-3.5 h-3.5" />
+                            React
+                          </button>
 
-                        {/* Reaction Picker */}
-                        <AnimatePresence>
-                          {showReactions === comment._id && (
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.9, y: -5 }}
-                              animate={{ opacity: 1, scale: 1, y: 0 }}
-                              exit={{ opacity: 0, scale: 0.9, y: -5 }}
-                              transition={{ duration: 0.15 }}
-                              className="absolute left-0 top-full mt-2 bg-white dark:bg-neutral-800 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-700 p-2 flex gap-1 z-50"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {REACTIONS.map(({ icon: Icon, label, color }) => (
-                                <motion.button
-                                  key={label}
-                                  whileHover={{ scale: 1.2 }}
-                                  whileTap={{ scale: 0.9 }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    // Handle reaction - you can add API call here
-                                    console.log(`Reacted with ${label} to comment ${comment._id}`);
-                                    setShowReactions(null);
-                                  }}
-                                  className={`p-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition-all ${color}`}
-                                  title={label.charAt(0).toUpperCase() + label.slice(1)}
-                                >
-                                  <Icon className="w-5 h-5" />
-                                </motion.button>
-                              ))}
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                          {/* Reaction Picker */}
+                          <AnimatePresence>
+                            {showReactions === comment._id && (
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0.9, y: -5 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.9, y: -5 }}
+                                transition={{ duration: 0.15 }}
+                                className="absolute left-0 top-full mt-2 bg-white dark:bg-neutral-800 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-700 p-3 flex gap-2 z-[100]"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {REACTIONS.map(({ icon: Icon, label, color }) => (
+                                  <motion.button
+                                    key={label}
+                                    whileHover={{ scale: 1.2 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      console.log(`Reacted with ${label} to comment ${comment._id}`);
+                                      setShowReactions(null);
+                                    }}
+                                    className={`p-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition-all`}
+                                    title={label.charAt(0).toUpperCase() + label.slice(1)}
+                                  >
+                                    <Icon className={`w-5 h-5 ${color}`} />
+                                  </motion.button>
+                                ))}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
                       </div>
                     </div>
                   </div>

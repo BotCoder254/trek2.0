@@ -67,10 +67,10 @@ router.post('/', protect, [
       isActive: true
     });
 
-    if (!membership || !['owner', 'manager'].includes(membership.role)) {
+    if (!membership) {
       return res.status(403).json({
         success: false,
-        message: 'Only owners and managers can create labels'
+        message: 'You are not a member of this workspace'
       });
     }
 
@@ -128,10 +128,10 @@ router.patch('/:id', protect, [
       isActive: true
     });
 
-    if (!membership || !['owner', 'manager'].includes(membership.role)) {
+    if (!membership) {
       return res.status(403).json({
         success: false,
-        message: 'Only owners and managers can edit labels'
+        message: 'You are not a member of this workspace'
       });
     }
 
@@ -173,10 +173,10 @@ router.delete('/:id', protect, async (req, res, next) => {
       isActive: true
     });
 
-    if (!membership || !['owner', 'manager'].includes(membership.role)) {
+    if (!membership) {
       return res.status(403).json({
         success: false,
-        message: 'Only owners and managers can delete labels'
+        message: 'You are not a member of this workspace'
       });
     }
 

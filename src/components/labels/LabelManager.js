@@ -34,8 +34,17 @@ const LabelManager = ({ workspaceId, selectedLabels = [], onLabelToggle, canEdit
     enabled: !!workspaceId
   });
 
-  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-  const userRole = membershipData?.data?.members?.find(m => m.userId?._id === currentUser?._id)?.role;
+  const currentUser = React.useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('user') || '{}');
+    } catch {
+      return {};
+    }
+  }, []);
+  
+  const userRole = React.useMemo(() => {
+    return membershipData?.data?.members?.find(m => m.userId?._id === currentUser?._id)?.role;
+  }, [membershipData, currentUser]);
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
@@ -67,7 +76,7 @@ const LabelManager = ({ workspaceId, selectedLabels = [], onLabelToggle, canEdit
           <Tag className="w-4 h-4" />
           Labels
         </label>
-        {canEdit && userRole && (userRole === 'owner' || userRole === 'manager') && (
+        {canEdit && (
           <button
             onClick={() => setShowCreate(!showCreate)}
             className="text-sm text-primary-light dark:text-primary-dark hover:underline flex items-center gap-1"
