@@ -43,6 +43,13 @@ router.post('/', protect, [
       });
     }
 
+    // Get all workspace members to add to project
+    const workspaceMembers = await Membership.find({ workspaceId, isActive: true });
+    const projectMembers = workspaceMembers.map(m => ({
+      userId: m.userId,
+      role: m.userId.toString() === req.user._id.toString() ? 'lead' : 'member'
+    }));
+
     const project = await Project.create({
       workspaceId,
       name,
@@ -52,15 +59,18 @@ router.post('/', protect, [
       dueDate,
       visibility,
       createdBy: req.user._id,
-      members: [{
-        userId: req.user._id,
-        role: 'lead'
-      }]
+      members: projectMembers
     });
 
     const populatedProject = await Project.findById(project._id)
       .populate('createdBy', 'firstName lastName email avatar')
       .populate('members.userId', 'firstName lastName email avatar');
+
+    // Emit socket event
+    const io = req.app.get('socketio');
+    if (io) {
+      io.to(`workspace:${workspaceId}`).emit('project:created', { workspaceId });
+    }
 
     res.status(201).json({
       success: true,

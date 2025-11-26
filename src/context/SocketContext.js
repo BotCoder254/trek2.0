@@ -112,6 +112,11 @@ export const SocketProvider = ({ children }) => {
       queryClient.invalidateQueries(['projects', data.workspaceId]);
     });
 
+    newSocket.on('project:created', (data) => {
+      console.log('🎯 Project created:', data);
+      queryClient.invalidateQueries(['projects', data.workspaceId]);
+    });
+
     setSocket(newSocket);
 
     return () => {
