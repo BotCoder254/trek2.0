@@ -14,6 +14,7 @@ A modern, full-stack project management platform built with the MERN stack (Mong
     <td><img src="projectimages/Screenshot From 2025-11-26 18-25-45.png" alt="Analytics" width="100%"/></td>
     <td><img src="projectimages/Screenshot From 2025-11-26 18-25-54.png" alt="Calendar" width="100%"/></td>
     <td><img src="projectimages/Screenshot From 2025-11-26 18-26-13.png" alt="Settings" width="100%"/></td>
+    <td><img src="projectimages/Screenshot From 2025-11-26 17-26-26.png" alt="Settings" width="100%"/></td>
   </tr>
 </table>
 
