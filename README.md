@@ -9,6 +9,7 @@ A modern, full-stack project management platform built with the MERN stack (Mong
     <td><img src="projectimages/Screenshot From 2025-11-26 13-31-18.png" alt="Dashboard" width="100%"/></td>
     <td><img src="projectimages/Screenshot From 2025-11-26 13-32-48.png" alt="Projects" width="100%"/></td>
     <td><img src="projectimages/Screenshot From 2025-11-26 13-32-55.png" alt="Tasks" width="100%"/></td>
+     <td><img src="projectimages/Screenshot From 2025-11-26 22-24-40.png" alt="Tasks" width="100%"/></td>
   </tr>
   <tr>
     <td><img src="projectimages/Screenshot From 2025-11-26 18-25-45.png" alt="Analytics" width="100%"/></td>
@@ -279,19 +280,19 @@ trek/
 ## 🚧 Coming Soon
 
 - Projects & Epics
-- Tasks & Subtasks
+- Tasks & Subtasks(Implemented)
 - Kanban Board
 - Calendar View
 - Analytics Dashboard
-- File Attachments
-- Comments & Activity Feed
-- Real-time Notifications
-- Advanced Search
-- Team Chat
+- File Attachments(implemented)
+- Comments & Activity Feed(implemented)
+- Real-time Notifications(implemented)
+- Advanced Search(implemented)
+- Team Chat(cooming soon)
 
 ## 📄 License
 
-This project is private and proprietary.
+This project is private and proprietary and also open source .
 
 ## 👨‍💻 Development
 
