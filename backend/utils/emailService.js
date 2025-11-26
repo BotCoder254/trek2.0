@@ -89,19 +89,27 @@ exports.sendInviteEmail = async ({ to, workspaceName, inviterName, role, inviteL
         .info-label {
           font-weight: 600;
           color: #6B7280;
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
         }
         .info-value {
           color: #111827;
           font-weight: 500;
+          font-size: 18px;
+          font-weight: 600;
         }
         .role-badge {
           display: inline-block;
-          padding: 4px 12px;
+          padding: px 12px;
           background: #F97316;
           color: white;
           border-radius: 12px;
           font-size: 14px;
           font-weight: 600;
+
         }
         .button {
           display: inline-block;
