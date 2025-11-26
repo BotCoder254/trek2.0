@@ -222,25 +222,37 @@ router.get('/:workspaceId/members', protect, checkWorkspaceMembership, async (re
     .populate('invitedBy', 'firstName lastName')
     .sort('-role joinedAt');
 
-    const members = memberships.map(m => ({
-      id: m._id,
-      user: {
-        id: m.userId._id,
-        firstName: m.userId.firstName,
-        lastName: m.userId.lastName,
-        fullName: `${m.userId.firstName} ${m.userId.lastName}`,
-        email: m.userId.email,
-        avatar: m.userId.avatar,
-        lastActive: m.userId.lastActive
-      },
-      role: m.role,
-      joinedAt: m.joinedAt,
-      lastActive: m.lastActive,
-      invitedBy: m.invitedBy ? {
-        id: m.invitedBy._id,
-        fullName: `${m.invitedBy.firstName} ${m.invitedBy.lastName}`
-      } : null
-    }));
+    const members = memberships.map(m => {
+      if (!m.userId) return null;
+      return {
+        _id: m._id,
+        userId: {
+          _id: m.userId._id,
+          firstName: m.userId.firstName,
+          lastName: m.userId.lastName,
+          fullName: `${m.userId.firstName} ${m.userId.lastName}`,
+          email: m.userId.email,
+          avatar: m.userId.avatar,
+          lastActive: m.userId.lastActive
+        },
+        user: {
+          id: m.userId._id,
+          firstName: m.userId.firstName,
+          lastName: m.userId.lastName,
+          fullName: `${m.userId.firstName} ${m.userId.lastName}`,
+          email: m.userId.email,
+          avatar: m.userId.avatar,
+          lastActive: m.userId.lastActive
+        },
+        role: m.role,
+        joinedAt: m.joinedAt,
+        lastActive: m.lastActive,
+        invitedBy: m.invitedBy ? {
+          id: m.invitedBy._id,
+          fullName: `${m.invitedBy.firstName} ${m.invitedBy.lastName}`
+        } : null
+      };
+    }).filter(Boolean);
 
     res.json({
       success: true,

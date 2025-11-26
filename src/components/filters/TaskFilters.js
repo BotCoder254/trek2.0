@@ -298,24 +298,27 @@ const TaskFilters = ({ filters, onFiltersChange, projectId, canSaveWorkspaceWide
                   Assignees
                 </label>
                 <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
-                  {members.map((member) => (
-                    <label key={member._id} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={filters.assignees?.includes(member.userId._id) || false}
-                        onChange={(e) => {
-                          const currentAssignees = filters.assignees || [];
-                          if (e.target.checked) {
-                            handleFilterChange('assignees', [...currentAssignees, member.userId._id]);
-                          } else {
-                            handleFilterChange('assignees', currentAssignees.filter(a => a !== member.userId._id));
-                          }
-                        }}
-                        className="w-4 h-4 rounded"
-                      />
-                      <span className="text-sm">{member.userId.firstName} {member.userId.lastName}</span>
-                    </label>
-                  ))}
+                  {members.map((member) => {
+                    if (!member.userId) return null;
+                    return (
+                      <label key={member._id} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={filters.assignees?.includes(member.userId._id) || false}
+                          onChange={(e) => {
+                            const currentAssignees = filters.assignees || [];
+                            if (e.target.checked) {
+                              handleFilterChange('assignees', [...currentAssignees, member.userId._id]);
+                            } else {
+                              handleFilterChange('assignees', currentAssignees.filter(a => a !== member.userId._id));
+                            }
+                          }}
+                          className="w-4 h-4 rounded"
+                        />
+                        <span className="text-sm">{member.userId.firstName} {member.userId.lastName}</span>
+                      </label>
+                    );
+                  }).filter(Boolean)}
                 </div>
               </div>
 
@@ -383,7 +386,7 @@ const TaskFilters = ({ filters, onFiltersChange, projectId, canSaveWorkspaceWide
                           )}
                         </p>
                         <p className="text-xs text-neutral-500">
-                          {view.createdBy.firstName} {view.createdBy.lastName}
+                          {view.createdBy?.firstName} {view.createdBy?.lastName}
                         </p>
                       </div>
                     </button>

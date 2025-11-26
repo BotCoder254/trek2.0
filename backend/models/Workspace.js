@@ -12,7 +12,6 @@ const workspaceSchema = new mongoose.Schema({
   },
   slug: {
     type: String,
-    required: true,
     unique: true,
     lowercase: true
   },
@@ -58,7 +57,7 @@ const workspaceSchema = new mongoose.Schema({
 
 // Create slug from name
 workspaceSchema.pre('save', async function(next) {
-  if (this.isModified('name')) {
+  if (this.isModified('name') || !this.slug) {
     let baseSlug = this.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
