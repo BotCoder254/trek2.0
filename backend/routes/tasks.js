@@ -6,6 +6,7 @@ const Project = require('../models/Project');
 const Membership = require('../models/Membership');
 const Activity = require('../models/Activity');
 const Comment = require('../models/Comment');
+const Notification = require('../models/Notification');
 const { protect } = require('../middleware/auth');
 const { validate } = require('../middleware/validation');
 
@@ -79,6 +80,29 @@ router.post('/', protect, [
     await logActivity('task.created', task._id, req.user._id, project.workspaceId, projectId, {}, {
       title: task.title
     });
+
+    // Create notifications for assignees
+    if (assignees && assignees.length > 0) {
+      const io = req.app.get('socketio');
+      for (const assigneeId of assignees) {
+        if (assigneeId.toString() !== req.user._id.toString()) {
+          await Notification.create({
+            workspaceId: project.workspaceId,
+            userId: assigneeId,
+            type: 'task_assigned',
+            title: 'New task assigned',
+            message: `${req.user.firstName} ${req.user.lastName} assigned you to "${task.title}"`,
+            link: `/workspace/${project.workspaceId}/projects/${projectId}`,
+            taskId: task._id,
+            projectId: projectId,
+            triggeredBy: req.user._id
+          });
+          if (io) {
+            io.to(`user:${assigneeId}`).emit('notification:new', { taskId: task._id });
+          }
+        }
+      }
+    }
 
     res.status(201).json({
       success: true,
@@ -168,9 +192,13 @@ router.get('/calendar', protect, async (req, res, next) => {
 // @access  Private
 router.get('/project/:projectId', protect, async (req, res, next) => {
   try {
+    const projectId = req.params.projectId;
+    if (!projectId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ success: false, message: 'Invalid project ID' });
+    }
     const { epicId, status, assignee, labels } = req.query;
     
-    const query = { projectId: req.params.projectId };
+    const query = { projectId };
     
     if (epicId) query.epicId = epicId === 'null' ? null : epicId;
     if (status) query.status = status;
@@ -258,6 +286,7 @@ router.put('/:taskId', protect, [
     const { title, description, status, priority, epicId, assignees, dueDate, tags, order, labels, checklist, estimate, timeSpent, position } = req.body;
 
     const oldTask = { ...task.toObject() };
+    const oldAssignees = task.assignees.map(a => a.toString());
 
     if (title !== undefined) task.title = title;
     if (description !== undefined) task.description = description;
@@ -297,6 +326,34 @@ router.put('/:taskId', protect, [
       description: task.description,
       checklist: task.checklist
     });
+
+    // Create notifications for newly assigned users
+    if (assignees !== undefined) {
+      const newAssignees = assignees.filter(a => !oldAssignees.includes(a.toString()));
+      if (newAssignees.length > 0) {
+        const io = req.app.get('socketio');
+        const projectDoc = await Project.findById(task.projectId);
+        const projId = projectDoc._id.toString();
+        for (const assigneeId of newAssignees) {
+          if (assigneeId.toString() !== req.user._id.toString()) {
+            await Notification.create({
+              workspaceId: projectDoc.workspaceId,
+              userId: assigneeId,
+              type: 'task_assigned',
+              title: 'Task assigned to you',
+              message: `${req.user.firstName} ${req.user.lastName} assigned you to "${task.title}"`,
+              link: `/workspace/${projectDoc.workspaceId}/projects/${projId}`,
+              taskId: task._id,
+              projectId: projId,
+              triggeredBy: req.user._id
+            });
+            if (io) {
+              io.to(`user:${assigneeId}`).emit('notification:new', { taskId: task._id });
+            }
+          }
+        }
+      }
+    }
 
     // If task status changed to 'done', check if it unblocks any other tasks
     if (status === 'done' && oldTask.status !== 'done' && task.blockedBy && task.blockedBy.length > 0) {
@@ -462,6 +519,36 @@ router.post('/:taskId/comments', protect, [
 
     // Log activity
     await logActivity('comment.added', task._id, req.user._id, task.projectId.workspaceId, task.projectId._id);
+
+    // Create notifications for task assignees and creator
+    const notifyUsers = new Set();
+    if (task.assignees) {
+      task.assignees.forEach(a => notifyUsers.add(a.toString()));
+    }
+    if (task.createdBy) {
+      notifyUsers.add(task.createdBy.toString());
+    }
+    notifyUsers.delete(req.user._id.toString());
+
+    const io = req.app.get('socketio');
+    const projectDoc = await Project.findById(task.projectId);
+    const projId = projectDoc._id.toString();
+    for (const userId of notifyUsers) {
+      await Notification.create({
+        workspaceId: projectDoc.workspaceId,
+        userId: userId,
+        type: 'task_commented',
+        title: 'New comment on task',
+        message: `${req.user.firstName} ${req.user.lastName} commented on "${task.title}"`,
+        link: `/workspace/${projectDoc.workspaceId}/projects/${projId}`,
+        taskId: task._id,
+        projectId: projId,
+        triggeredBy: req.user._id
+      });
+      if (io) {
+        io.to(`user:${userId}`).emit('notification:new', { taskId: task._id });
+      }
+    }
 
     res.status(201).json({
       success: true,

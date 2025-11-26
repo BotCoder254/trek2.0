@@ -250,6 +250,20 @@ router.post('/:token/accept', protect, async (req, res, next) => {
       invitedBy: invite.invitedBy
     });
 
+    // Add user to all workspace projects
+    const Project = require('../models/Project');
+    const projects = await Project.find({ 
+      workspaceId: invite.workspaceId._id,
+      visibility: 'workspace'
+    });
+    
+    for (const project of projects) {
+      if (!project.members.some(m => m.userId.toString() === req.user._id.toString())) {
+        project.members.push({ userId: req.user._id, role: 'member' });
+        await project.save();
+      }
+    }
+
     res.json({
       success: true,
       message: 'Invite accepted successfully',

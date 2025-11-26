@@ -30,9 +30,24 @@ export const SocketProvider = ({ children }) => {
       return;
     }
 
+    // Get current user ID
+    const token = localStorage.getItem('token');
+    let userId = null;
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        userId = payload.id;
+      } catch (e) {
+        console.error('Failed to parse token:', e);
+      }
+    }
+
     // Connect to Socket.io server
     const newSocket = io(process.env.REACT_APP_API_URL || 'http://localhost:5000', {
-      query: { workspaceId: currentWorkspace.id },
+      query: { 
+        workspaceId: currentWorkspace.id,
+        userId: userId
+      },
       transports: ['polling', 'websocket'],
       reconnection: true,
       reconnectionDelay: 1000,

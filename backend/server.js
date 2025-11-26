@@ -20,7 +20,7 @@ const io = new Server(server, {
 });
 
 // Make io accessible to routes
-app.set('io', io);
+app.set('socketio', io);
 
 // Middleware
 app.use(cors({
@@ -34,26 +34,38 @@ app.use(cookieParser());
 // Socket.io authentication and workspace rooms
 io.use((socket, next) => {
   const workspaceId = socket.handshake.query.workspaceId;
+  const userId = socket.handshake.query.userId;
+  
   if (workspaceId && workspaceId !== 'undefined' && workspaceId !== 'null') {
     socket.workspaceId = workspaceId;
-    next();
-  } else {
-    next(new Error('Valid workspace ID required'));
   }
+  
+  if (userId && userId !== 'undefined' && userId !== 'null') {
+    socket.userId = userId;
+  }
+  
+  next();
 });
 
 io.on('connection', (socket) => {
-  console.log(`🔌 Client connected to workspace: ${socket.workspaceId}`);
+  console.log(`🔌 Client connected - Workspace: ${socket.workspaceId}, User: ${socket.userId}`);
   
   // Join workspace room
-  socket.join(`workspace:${socket.workspaceId}`);
+  if (socket.workspaceId) {
+    socket.join(`workspace:${socket.workspaceId}`);
+  }
+  
+  // Join user room for personal notifications
+  if (socket.userId) {
+    socket.join(`user:${socket.userId}`);
+  }
   
   socket.on('disconnect', (reason) => {
-    console.log(`🔌 Client disconnected from workspace: ${socket.workspaceId}, reason: ${reason}`);
+    console.log(`🔌 Client disconnected - Workspace: ${socket.workspaceId}, User: ${socket.userId}, Reason: ${reason}`);
   });
   
   socket.on('error', (error) => {
-    console.error(`🔌 Socket error for workspace ${socket.workspaceId}:`, error);
+    console.error(`🔌 Socket error:`, error);
   });
 });
 

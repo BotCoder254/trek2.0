@@ -71,7 +71,11 @@ router.post('/', protect, [
 // @access  Private
 router.get('/project/:projectId', protect, async (req, res, next) => {
   try {
-    const epics = await Epic.find({ projectId: req.params.projectId })
+    const projectId = req.params.projectId;
+    if (!projectId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ success: false, message: 'Invalid project ID' });
+    }
+    const epics = await Epic.find({ projectId })
       .populate('createdBy', 'firstName lastName email avatar')
       .sort('order');
 

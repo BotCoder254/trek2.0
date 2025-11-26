@@ -76,6 +76,20 @@ router.post('/signup', [
           invitedBy: invite.invitedBy
         });
 
+        // Add user to all workspace projects
+        const Project = require('../models/Project');
+        const projects = await Project.find({ 
+          workspaceId: invite.workspaceId._id,
+          visibility: 'workspace'
+        });
+        
+        for (const project of projects) {
+          if (!project.members.some(m => m.userId.toString() === user._id.toString())) {
+            project.members.push({ userId: user._id, role: 'member' });
+            await project.save();
+          }
+        }
+
         workspace = invite.workspaceId;
       }
     }
@@ -165,6 +179,20 @@ router.post('/login', [
             role: invite.role,
             invitedBy: invite.invitedBy
           });
+
+          // Add user to all workspace projects
+          const Project = require('../models/Project');
+          const projects = await Project.find({ 
+            workspaceId: invite.workspaceId._id,
+            visibility: 'workspace'
+          });
+          
+          for (const project of projects) {
+            if (!project.members.some(m => m.userId.toString() === user._id.toString())) {
+              project.members.push({ userId: user._id, role: 'member' });
+              await project.save();
+            }
+          }
 
           inviteWorkspace = {
             id: invite.workspaceId._id,

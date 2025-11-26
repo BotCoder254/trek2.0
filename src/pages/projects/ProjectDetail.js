@@ -39,10 +39,16 @@ const ProjectDetail = () => {
   // Fetch tasks
   const { data: tasksData } = useQuery({
     queryKey: ['tasks', projectId, selectedEpic, filters],
-    queryFn: () => projectService.getProjectTasks(projectId, { 
-      ...(selectedEpic ? { epicId: selectedEpic } : {}),
-      ...filters
-    })
+    queryFn: () => {
+      if (!projectId || typeof projectId !== 'string' || projectId.length !== 24) {
+        throw new Error('Invalid project ID');
+      }
+      return projectService.getProjectTasks(projectId, { 
+        ...(selectedEpic ? { epicId: selectedEpic } : {}),
+        ...filters
+      });
+    },
+    enabled: !!projectId
   });
 
   // Create task mutation

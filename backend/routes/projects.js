@@ -123,7 +123,11 @@ router.get('/workspace/:workspaceId', protect, checkWorkspaceMembership, async (
 // @access  Private (Member)
 router.get('/:projectId', protect, async (req, res, next) => {
   try {
-    const project = await Project.findById(req.params.projectId)
+    const projectId = req.params.projectId;
+    if (!projectId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ success: false, message: 'Invalid project ID' });
+    }
+    const project = await Project.findById(projectId)
       .populate('createdBy', 'firstName lastName email avatar')
       .populate('members.userId', 'firstName lastName email avatar');
 
