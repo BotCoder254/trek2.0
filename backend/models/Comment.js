@@ -25,6 +25,22 @@ const commentSchema = new mongoose.Schema({
     type: String,
     size: Number
   }],
+  reactions: [{
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    type: {
+      type: String,
+      enum: ['like', 'love', 'haha', 'sad', 'wow'],
+      required: true
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   edited: {
     type: Boolean,
     default: false

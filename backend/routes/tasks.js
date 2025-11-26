@@ -607,5 +607,87 @@ router.get('/:taskId/activity', protect, async (req, res, next) => {
   }
 });
 
+// @route   POST /api/tasks/:taskId/comments/:commentId/react
+// @desc    Add reaction to comment
+// @access  Private
+router.post('/:taskId/comments/:commentId/react', protect, [
+  body('type').isIn(['like', 'love', 'haha', 'sad', 'wow']).withMessage('Invalid reaction type'),
+  validate
+], async (req, res, next) => {
+  try {
+    const { type } = req.body;
+    const comment = await Comment.findById(req.params.commentId);
+
+    if (!comment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Comment not found'
+      });
+    }
+
+    // Check if user already reacted
+    const existingReaction = comment.reactions.find(
+      r => r.userId.toString() === req.user._id.toString()
+    );
+
+    if (existingReaction) {
+      // Update existing reaction
+      existingReaction.type = type;
+    } else {
+      // Add new reaction
+      comment.reactions.push({
+        userId: req.user._id,
+        type
+      });
+    }
+
+    await comment.save();
+
+    const updatedComment = await Comment.findById(comment._id)
+      .populate('userId', 'firstName lastName email avatar')
+      .populate('reactions.userId', 'firstName lastName');
+
+    res.json({
+      success: true,
+      data: { comment: updatedComment }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @route   DELETE /api/tasks/:taskId/comments/:commentId/react
+// @desc    Remove reaction from comment
+// @access  Private
+router.delete('/:taskId/comments/:commentId/react', protect, async (req, res, next) => {
+  try {
+    const comment = await Comment.findById(req.params.commentId);
+
+    if (!comment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Comment not found'
+      });
+    }
+
+    comment.reactions = comment.reactions.filter(
+      r => r.userId.toString() !== req.user._id.toString()
+    );
+
+    await comment.save();
+
+    const updatedComment = await Comment.findById(comment._id)
+      .populate('userId', 'firstName lastName email avatar')
+      .populate('reactions.userId', 'firstName lastName');
+
+    res.json({
+      success: true,
+      data: { comment: updatedComment }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;
 

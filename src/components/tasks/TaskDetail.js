@@ -97,6 +97,24 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
     enabled: !!taskId
   });
 
+  // Add reaction mutation
+  const addReactionMutation = useMutation({
+    mutationFn: async ({ commentId, type }) => {
+      const response = await fetch(`/api/tasks/${taskId}/comments/${commentId}/react`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ type })
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['task-comments', taskId]);
+    }
+  });
+
   // Update task mutation
   const updateMutation = useMutation({
     mutationFn: (data) => projectService.updateTask(taskId, data),
@@ -579,7 +597,7 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
                                     whileTap={{ scale: 0.9 }}
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      console.log(`Reacted with ${label} to comment ${comment._id}`);
+                                      addReactionMutation.mutate({ commentId: comment._id, type: label });
                                       setShowReactions(null);
                                     }}
                                     className={`p-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition-all`}
@@ -592,6 +610,31 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
                             )}
                           </AnimatePresence>
                         </div>
+
+                        {/* Display Reactions */}
+                        {comment.reactions && comment.reactions.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {Object.entries(
+                              comment.reactions.reduce((acc, r) => {
+                                acc[r.type] = (acc[r.type] || 0) + 1;
+                                return acc;
+                              }, {})
+                            ).map(([type, count]) => {
+                              const reaction = REACTIONS.find(r => r.label === type);
+                              if (!reaction) return null;
+                              const Icon = reaction.icon;
+                              return (
+                                <div
+                                  key={type}
+                                  className="flex items-center gap-1 px-2 py-1 rounded-full bg-neutral-100 dark:bg-neutral-700 text-xs"
+                                >
+                                  <Icon className={`w-3.5 h-3.5 ${reaction.color}`} />
+                                  <span>{count}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
