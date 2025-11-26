@@ -58,7 +58,6 @@ exports.getS3PresignedUrl = async (filename, mimetype) => {
       fileType: getFileType(mimetype)
     };
   } catch (error) {
-    console.error('S3 presigned URL error:', error);
     return {
       success: false,
       error: error.message
@@ -81,7 +80,6 @@ exports.getS3SignedDownloadUrl = async (key) => {
       url
     };
   } catch (error) {
-    console.error('S3 download URL error:', error);
     return {
       success: false,
       error: error.message
@@ -100,7 +98,6 @@ exports.deleteS3File = async (key) => {
     
     return { success: true };
   } catch (error) {
-    console.error('S3 delete error:', error);
     return {
       success: false,
       error: error.message
@@ -133,7 +130,6 @@ exports.getCloudinarySignature = async (filename, folder = 'trek-uploads') => {
       uploadUrl: `https://api.cloudinary.com/v1_1/${config.CLOUDINARY_CLOUD_NAME}/auto/upload`
     };
   } catch (error) {
-    console.error('Cloudinary signature error:', error);
     return {
       success: false,
       error: error.message
@@ -150,7 +146,6 @@ exports.deleteCloudinaryFile = async (publicId) => {
       result
     };
   } catch (error) {
-    console.error('Cloudinary delete error:', error);
     return {
       success: false,
       error: error.message
@@ -207,17 +202,14 @@ exports.getPresignedUrl = async (filename, mimetype) => {
 exports.getUploadCredentials = async (filename, mimetype) => {
   // Try Cloudinary first
   if (isCloudinaryConfigured()) {
-    console.log('Using Cloudinary for file upload');
     const result = await exports.getCloudinarySignature(filename);
     if (result.success) {
       return { ...result, provider: 'cloudinary' };
     }
-    console.warn('Cloudinary failed, falling back to S3');
   }
   
   // Fallback to S3
   if (isS3Configured()) {
-    console.log('Using S3 for file upload');
     const result = await exports.getS3PresignedUrl(filename, mimetype);
     return { ...result, provider: 's3' };
   }

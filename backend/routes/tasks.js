@@ -9,6 +9,7 @@ const Comment = require('../models/Comment');
 const Notification = require('../models/Notification');
 const { protect } = require('../middleware/auth');
 const { validate } = require('../middleware/validation');
+const { createNotification } = require('./notifications');
 
 // Helper to log activity
 const logActivity = async (type, taskId, userId, workspaceId, projectId, changes = {}, metadata = {}) => {
@@ -86,7 +87,7 @@ router.post('/', protect, [
       const io = req.app.get('socketio');
       for (const assigneeId of assignees) {
         if (assigneeId.toString() !== req.user._id.toString()) {
-          await Notification.create({
+          await createNotification({
             workspaceId: project.workspaceId,
             userId: assigneeId,
             type: 'task_assigned',
@@ -96,10 +97,7 @@ router.post('/', protect, [
             taskId: task._id,
             projectId: projectId,
             triggeredBy: req.user._id
-          });
-          if (io) {
-            io.to(`user:${assigneeId}`).emit('notification:new', { taskId: task._id });
-          }
+          }, io);
         }
       }
     }
@@ -336,7 +334,7 @@ router.put('/:taskId', protect, [
         const projId = projectDoc._id.toString();
         for (const assigneeId of newAssignees) {
           if (assigneeId.toString() !== req.user._id.toString()) {
-            await Notification.create({
+            await createNotification({
               workspaceId: projectDoc.workspaceId,
               userId: assigneeId,
               type: 'task_assigned',
@@ -346,10 +344,7 @@ router.put('/:taskId', protect, [
               taskId: task._id,
               projectId: projId,
               triggeredBy: req.user._id
-            });
-            if (io) {
-              io.to(`user:${assigneeId}`).emit('notification:new', { taskId: task._id });
-            }
+            }, io);
           }
         }
       }
@@ -534,20 +529,17 @@ router.post('/:taskId/comments', protect, [
     const projectDoc = await Project.findById(task.projectId);
     const projId = projectDoc._id.toString();
     for (const userId of notifyUsers) {
-      await Notification.create({
+      await createNotification({
         workspaceId: projectDoc.workspaceId,
         userId: userId,
-        type: 'task_commented',
+        type: 'comment_added',
         title: 'New comment on task',
         message: `${req.user.firstName} ${req.user.lastName} commented on "${task.title}"`,
         link: `/workspace/${projectDoc.workspaceId}/projects/${projId}`,
         taskId: task._id,
         projectId: projId,
         triggeredBy: req.user._id
-      });
-      if (io) {
-        io.to(`user:${userId}`).emit('notification:new', { taskId: task._id });
-      }
+      }, io);
     }
 
     res.status(201).json({
