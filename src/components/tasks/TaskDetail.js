@@ -43,6 +43,8 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
   const [showGallery, setShowGallery] = useState(false);
   const [activeTab, setActiveTab] = useState('details'); // details, dependencies, history
   const [showAssigneeModal, setShowAssigneeModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
   const REACTIONS = [
     { icon: ThumbsUp, label: 'like', color: 'text-info-light' },
@@ -125,6 +127,15 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
         setFormData(response.data.task);
       }
       setIsEditing(false);
+    }
+  });
+
+  // Delete task mutation
+  const deleteMutation = useMutation({
+    mutationFn: () => projectService.deleteTask(taskId),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['tasks', projectId]);
+      onClose();
     }
   });
 
@@ -228,9 +239,32 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
           </div>
 
           <div className="flex items-center gap-2">
-            <button className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg">
-              <MoreVertical className="w-5 h-5" />
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setShowMenu(!showMenu)}
+                className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg"
+              >
+                <MoreVertical className="w-5 h-5" />
+              </button>
+              {showMenu && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-neutral-800 rounded-lg shadow-xl border border-border-light dark:border-border-dark z-50"
+                >
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      setShowDeleteModal(true);
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-left text-secondary-light dark:text-secondary-dark hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete Task
+                  </button>
+                </motion.div>
+              )}
+            </div>
             <button
               onClick={onClose}
               className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg"
@@ -780,6 +814,50 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
             >
               Done
             </button>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4" onClick={() => setShowDeleteModal(false)}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={(e) => e.stopPropagation()}
+            className="card p-6 w-full max-w-md"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-secondary-light/10 dark:bg-secondary-dark/10 flex items-center justify-center">
+                <Trash2 className="w-6 h-6 text-secondary-light dark:text-secondary-dark" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+                  Delete Task
+                </h3>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                  This action cannot be undone
+                </p>
+              </div>
+            </div>
+            <p className="text-neutral-700 dark:text-neutral-300 mb-6">
+              Are you sure you want to delete <strong>{task.title}</strong>? All comments, attachments, and history will be permanently removed.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 btn btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteMutation.mutate()}
+                disabled={deleteMutation.isPending}
+                className="flex-1 btn bg-secondary-light dark:bg-secondary-dark text-white hover:opacity-90"
+              >
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
           </motion.div>
         </div>
       )}

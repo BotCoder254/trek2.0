@@ -296,7 +296,7 @@ router.put('/:taskId', protect, [
     const { title, description, status, priority, epicId, assignees, dueDate, tags, order, labels, checklist, estimate, timeSpent, position } = req.body;
 
     const oldTask = { ...task.toObject() };
-    const oldAssignees = task.assignees.map(a => a.toString());
+    const oldAssignees = task.assignees.filter(a => a).map(a => a.toString());
 
     if (title !== undefined) task.title = title;
     if (description !== undefined) task.description = description;
@@ -370,7 +370,7 @@ router.put('/:taskId', protect, [
 
     // Create notifications for newly assigned users
     if (assignees !== undefined) {
-      const newAssignees = assignees.filter(a => !oldAssignees.includes(a.toString()));
+      const newAssignees = assignees.filter(a => a && !oldAssignees.includes(a.toString()));
       if (newAssignees.length > 0) {
         const io = req.app.get('socketio');
         const projectDoc = await Project.findById(task.projectId);
@@ -573,7 +573,7 @@ router.post('/:taskId/comments', protect, [
     // Create notifications for task assignees and creator
     const notifyUsers = new Set();
     if (task.assignees) {
-      task.assignees.forEach(a => notifyUsers.add(a.toString()));
+      task.assignees.filter(a => a).forEach(a => notifyUsers.add(a.toString()));
     }
     if (task.createdBy) {
       notifyUsers.add(task.createdBy.toString());
