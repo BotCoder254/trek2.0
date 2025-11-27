@@ -106,13 +106,19 @@ app.use('*', (req, res) => {
 // Error handler (must be last)
 app.use(errorHandler);
 
-// Database connection
-mongoose.connect(config.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
-.then(() => {
-  console.log('✅ MongoDB connected successfully');
+// Database connection with MongoDB Atlas
+const clientOptions = { 
+  serverApi: { 
+    version: '1', 
+    strict: true, 
+    deprecationErrors: true 
+  }
+};
+
+mongoose.connect(config.MONGODB_URI, clientOptions)
+.then(async () => {
+  await mongoose.connection.db.admin().command({ ping: 1 });
+  console.log('✅ MongoDB Atlas connected successfully');
   
   // Start server
   const PORT = config.PORT || 5000;

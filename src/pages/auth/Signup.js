@@ -162,7 +162,7 @@ const Signup = () => {
         <img 
           src="https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=2070&auto=format&fit=crop"
           alt="Team working together"
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover o"
         />
         <div className="absolute inset-0 flex flex-col justify-center items-center text-white p-12">
           <motion.div
