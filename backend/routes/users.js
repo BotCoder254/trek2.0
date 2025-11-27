@@ -265,7 +265,7 @@ router.post('/me/email/change', protect, [
       <body>
         <div class="container">
           <div class="header">
-            <h1>🏔️ TREK</h1>
+            <h1>TREK</h1>
           </div>
           <div class="content">
             <h2>Confirm Email Change</h2>
@@ -275,14 +275,14 @@ router.post('/me/email/change', protect, [
             <a href="${confirmUrl}" class="button">Confirm Email Change</a>
             
             <div class="warning">
-              <strong>⚠️ Important:</strong> This link will expire in 1 hour. If you didn't request this change, please ignore this email and your email will remain unchanged.
+              <strong>Important:</strong> This link will expire in 1 hour. If you did not request this change, please ignore this email and your email will remain unchanged.
             </div>
             
             <p>Or copy and paste this link into your browser:</p>
             <p style="word-break: break-all; color: #f97316;">${confirmUrl}</p>
           </div>
           <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} TREK. All rights reserved.</p>
+            <p>Copyright ${new Date().getFullYear()} TREK. All rights reserved.</p>
           </div>
         </div>
       </body>

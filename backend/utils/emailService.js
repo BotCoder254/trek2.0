@@ -161,7 +161,7 @@ exports.sendInviteEmail = async ({ to, workspaceName, inviterName, role, inviteL
         </div>
         
         <div class="content">
-          <div class="greeting">You're Invited!</div>
+          <div class="greeting">You are Invited</div>
           
           <div class="message">
             <strong>${inviterName}</strong> has invited you to join <strong>${workspaceName}</strong> on TREK.
@@ -226,7 +226,7 @@ exports.sendInviteEmail = async ({ to, workspaceName, inviterName, role, inviteL
     await transporter.sendMail({
       from: `"TREK" <${config.EMAIL_USER}>`,
       to,
-      subject: `You're invited to join ${workspaceName} on TREK`,
+      subject: `You are invited to join ${workspaceName} on TREK`,
       html: emailTemplate
     });
     return { success: true };

@@ -267,16 +267,7 @@ router.get('/:workspaceId/members', protect, checkWorkspaceMembership, async (re
     const members = memberships.map(m => {
       if (!m.userId) return null;
       return {
-        _id: m._id,
-        userId: {
-          _id: m.userId._id,
-          firstName: m.userId.firstName,
-          lastName: m.userId.lastName,
-          fullName: `${m.userId.firstName} ${m.userId.lastName}`,
-          email: m.userId.email,
-          avatar: m.userId.avatar,
-          lastActive: m.userId.lastActive
-        },
+        id: m._id,
         user: {
           id: m.userId._id,
           firstName: m.userId.firstName,
@@ -430,11 +421,114 @@ router.delete('/:workspaceId/members/:membershipId',
         }
       }
 
+      const targetUser = await User.findById(membership.userId);
+      const workspace = await Workspace.findById(req.params.workspaceId);
+      
       membership.isActive = false;
       await membership.save();
 
+      // Send removal notification email
+      if (targetUser && targetUser.email) {
+        const { sendEmail } = require('../utils/emailService');
+        const emailTemplate = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Removed from ${workspace.name}</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f5f5f5; margin: 0; padding: 0; }
+              .container { max-width: 600px; margin: 40px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+              .header { background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%); padding: 40px 20px; text-align: center; }
+              .logo { font-size: 36px; font-weight: bold; color: white; margin-bottom: 10px; }
+              .content { padding: 40px 30px; }
+              .greeting { font-size: 24px; font-weight: 600; color: #111827; margin-bottom: 20px; }
+              .message { font-size: 16px; color: #4B5563; margin-bottom: 30px; line-height: 1.8; }
+              .workspace-info { background: #FEF2F2; padding: 20px; border-radius: 8px; margin: 30px 0; border-left: 4px solid #EF4444; }
+              .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #FEE2E2; }
+              .info-row:last-child { border-bottom: none; }
+              .info-label { font-weight: 600; color: #6B7280; }
+              .info-value { color: #111827; font-weight: 500; }
+              .note { background: #F9FAFB; border-left: 4px solid #9CA3AF; padding: 20px; margin: 30px 0; border-radius: 4px; font-size: 14px; color: #4B5563; }
+              .footer { background: #F9FAFB; padding: 30px; text-align: center; color: #6B7280; font-size: 14px; }
+              .footer-link { color: #EF4444; text-decoration: none; }
+              .divider { height: 1px; background: #E5E7EB; margin: 30px 0; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <div class="logo">TREK</div>
+                <p style="color: rgba(255,255,255,0.9); margin: 0; font-size: 18px;">Project Management Platform</p>
+              </div>
+              
+              <div class="content">
+                <div class="greeting">Workspace Access Removed</div>
+                
+                <div class="message">
+                  Hello <strong>${targetUser.firstName}</strong>,
+                </div>
+                
+                <div class="workspace-info">
+                  <div class="info-row">
+                    <span class="info-label">Workspace</span>
+                    <span class="info-value">${workspace.name}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="info-label">Removed By</span>
+                    <span class="info-value">${req.user.firstName} ${req.user.lastName}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="info-label">Your Previous Role</span>
+                    <span class="info-value">${membership.role}</span>
+                  </div>
+                </div>
+                
+                <div class="message">
+                  You have been removed from the <strong>${workspace.name}</strong> workspace. You will no longer have access to:
+                </div>
+                
+                <ul style="margin: 20px 0; padding-left: 20px; color: #4B5563;">
+                  <li>Projects and tasks in this workspace</li>
+                  <li>Workspace files and attachments</li>
+                  <li>Team discussions and comments</li>
+                  <li>Workspace analytics and reports</li>
+                </ul>
+                
+                <div class="note">
+                  <strong>Note:</strong> If you believe this was done in error, please contact the workspace owner or ${req.user.firstName} ${req.user.lastName} directly.
+                </div>
+                
+                <div class="divider"></div>
+                
+                <div style="font-size: 14px; color: #6B7280; text-align: center;">
+                  <p>Thank you for being part of ${workspace.name}.</p>
+                </div>
+              </div>
+              
+              <div class="footer">
+                <p>This is an automated notification from TREK.</p>
+                <p style="margin-top: 15px;">
+                  <a href="${config.FRONTEND_URL}" class="footer-link">TREK</a> - Where teams collaborate and projects succeed
+                </p>
+                <p style="margin-top: 15px; font-size: 12px; color: #9CA3AF;">
+                  Copyright ${new Date().getFullYear()} TREK. All rights reserved.
+                </p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `;
+        
+        await sendEmail({
+          to: targetUser.email,
+          subject: `Removed from ${workspace.name} workspace - TREK`,
+          html: emailTemplate
+        });
+      }
+
       // Log audit
-      const targetUser = await User.findById(membership.userId);
       await logAudit({
         workspaceId: req.params.workspaceId,
         actorId: req.user._id,
