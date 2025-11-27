@@ -74,7 +74,7 @@ const Login = () => {
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6 }}
-        className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary-light to-info-light dark:from-primary-dark dark:to-info-dark relative overflow-hidden"
+        className="hidden lg:flex lg:w-1/2 mt-8 mb-8 rounded-r-xl ml-8 rounded-l-xl bg-gradient-to-br from-primary-light to-info-light dark:from-primary-dark dark:to-info-dark relative overflow-hidden"
       >
         <div className="absolute inset-0 bg-black/20" />
         <img 
