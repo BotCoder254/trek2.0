@@ -32,7 +32,7 @@ const ForgotPassword = () => {
         <img
           src= "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=2070&auto=format&fit=crop"
           alt="Background"
-          className="absolute inset-0 w-full h-full object-cover "
+          className=" w-full h-full object-cover "
         />
         <div className="relative z-10 flex flex-col justify-center px-16 text-white">
           <motion.div
