@@ -27,12 +27,12 @@ const ForgotPassword = () => {
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Image */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary-light to-info-light relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 mt-8 mb-8 rounded-r-xl ml-8 rounded-l-xl  from-info-light to-success-light dark:from-info-dark dark:to-success-dark  relative overflow-hidden">
         <div className="absolute inset-0 bg-black/20" />
         <img
-          src="https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&w=1920&q=80"
+          src= "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=2070&auto=format&fit=crop"
           alt="Background"
-          className="absolute inset-0 w-full h-full object-cover mix-blend-overlay"
+          className="absolute inset-0 w-full h-full object-cover "
         />
         <div className="relative z-10 flex flex-col justify-center px-16 text-white">
           <motion.div
@@ -41,7 +41,7 @@ const ForgotPassword = () => {
             transition={{ duration: 0.6 }}
           >
             <h1 className="text-5xl font-bold mb-6">
-              🏔️ TREK
+              TREK
             </h1>
             <p className="text-2xl font-light mb-4">
               Reset Your Password
