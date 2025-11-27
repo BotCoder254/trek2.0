@@ -7,6 +7,7 @@ const Task = require('../models/Task');
 const Membership = require('../models/Membership');
 const { protect, checkWorkspaceMembership, requirePermission } = require('../middleware/auth');
 const { validate } = require('../middleware/validation');
+const { logAudit } = require('../utils/auditLogger');
 
 // @route   POST /api/projects
 // @desc    Create project
@@ -65,6 +66,17 @@ router.post('/', protect, [
     const populatedProject = await Project.findById(project._id)
       .populate('createdBy', 'firstName lastName email avatar')
       .populate('members.userId', 'firstName lastName email avatar');
+
+    // Log audit
+    await logAudit({
+      workspaceId,
+      actorId: req.user._id,
+      action: 'project.created',
+      targetType: 'project',
+      targetId: project._id,
+      targetName: project.name,
+      req
+    });
 
     // Emit socket event
     const io = req.app.get('socketio');
@@ -223,6 +235,7 @@ router.put('/:projectId', protect, [
     }
 
     const { name, description, color, status, startDate, dueDate, visibility } = req.body;
+    const oldProject = { ...project.toObject() };
 
     if (name) project.name = name;
     if (description !== undefined) project.description = description;
@@ -237,6 +250,22 @@ router.put('/:projectId', protect, [
     const updatedProject = await Project.findById(project._id)
       .populate('createdBy', 'firstName lastName email avatar')
       .populate('members.userId', 'firstName lastName email avatar');
+
+    // Log audit
+    const changes = {};
+    if (name && name !== oldProject.name) changes.name = { from: oldProject.name, to: name };
+    if (status && status !== oldProject.status) changes.status = { from: oldProject.status, to: status };
+    
+    await logAudit({
+      workspaceId: project.workspaceId,
+      actorId: req.user._id,
+      action: status === 'archived' ? 'project.archived' : 'project.updated',
+      targetType: 'project',
+      targetId: project._id,
+      targetName: project.name,
+      changes,
+      req
+    });
 
     res.json({
       success: true,
@@ -282,6 +311,17 @@ router.delete('/:projectId', protect, async (req, res, next) => {
     await Epic.deleteMany({ projectId: project._id });
     await Task.deleteMany({ projectId: project._id });
     await Project.findByIdAndDelete(project._id);
+
+    // Log audit
+    await logAudit({
+      workspaceId: project.workspaceId,
+      actorId: req.user._id,
+      action: 'project.deleted',
+      targetType: 'project',
+      targetId: project._id,
+      targetName: project.name,
+      req
+    });
 
     res.json({
       success: true,

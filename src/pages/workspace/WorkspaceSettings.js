@@ -10,7 +10,8 @@ import {
   UserPlus,
   X,
   Loader,
-  AlertCircle
+  AlertCircle,
+  Shield
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -178,7 +179,10 @@ const WorkspaceSettings = () => {
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Settings },
-    { id: 'members', label: 'Members', icon: Users }
+    { id: 'members', label: 'Members', icon: Users },
+    ...(currentUserRole === ROLES.OWNER || currentUserRole === ROLES.MANAGER 
+      ? [{ id: 'audit', label: 'Audit Logs', icon: Shield }] 
+      : [])
   ];
 
   if (!workspace) {
@@ -531,6 +535,26 @@ const WorkspaceSettings = () => {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'audit' && (
+            <div className="card p-6">
+              <div className="text-center py-8">
+                <Shield className="w-12 h-12 text-neutral-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-2">
+                  Audit Logs
+                </h3>
+                <p className="text-neutral-600 dark:text-neutral-400 mb-4">
+                  View detailed audit logs in the dedicated Audit Logs page
+                </p>
+                <button
+                  onClick={() => navigate(`/workspace/${workspaceId}/audit`)}
+                  className="btn btn-primary"
+                >
+                  Go to Audit Logs
+                </button>
               </div>
             </div>
           )}

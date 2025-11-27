@@ -9,6 +9,7 @@ const { protect, checkWorkspaceMembership, requireRole } = require('../middlewar
 const { validate } = require('../middleware/validation');
 const { sendInviteEmail } = require('../utils/emailService');
 const config = require('../config/env.config');
+const { logAudit } = require('../utils/auditLogger');
 // @route   POST /api/invites
 // @desc    Create invite
 // @access  Private (Owner/Manager)
@@ -96,6 +97,17 @@ router.post('/', protect, [
     const populatedInvite = await Invite.findById(invite._id)
       .populate('workspaceId', 'name slug')
       .populate('invitedBy', 'firstName lastName email');
+
+    // Log audit
+    await logAudit({
+      workspaceId,
+      actorId: req.user._id,
+      action: 'member.invited',
+      targetType: 'member',
+      targetName: email,
+      changes: { role, email },
+      req
+    });
 
     // Send email if requested
     let emailSent = false;
@@ -248,6 +260,18 @@ router.post('/:token/accept', protect, async (req, res, next) => {
       workspaceId: invite.workspaceId._id,
       role: invite.role,
       invitedBy: invite.invitedBy
+    });
+
+    // Log audit
+    await logAudit({
+      workspaceId: invite.workspaceId._id,
+      actorId: req.user._id,
+      action: 'member.joined',
+      targetType: 'member',
+      targetId: req.user._id,
+      targetName: `${req.user.firstName} ${req.user.lastName}`,
+      changes: { role: invite.role, invitedBy: invite.invitedBy },
+      req
     });
 
     // Add user to all workspace projects

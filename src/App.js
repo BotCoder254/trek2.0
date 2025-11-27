@@ -41,6 +41,9 @@ import AnalyticsPage from './pages/analytics/AnalyticsPage';
 // Notifications
 import NotificationsPage from './pages/notifications/NotificationsPage';
 
+// Audit Logs
+import AuditLogsPage from './pages/workspace/AuditLogsPage';
+
 // Create Query Client
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -120,6 +123,7 @@ function App() {
                   <Route path="projects/:projectId" element={<ProjectDetail />} />
                   <Route path="calendar" element={<CalendarView />} />
                   <Route path="analytics" element={<AnalyticsPage />} />
+                  <Route path="audit" element={<AuditLogsPage />} />
                 </Route>
                 
                 {/* Invite Route */}

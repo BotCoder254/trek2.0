@@ -84,6 +84,7 @@ app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/views', require('./routes/savedViews'));
 app.use('/api/labels', require('./routes/labels'));
+app.use('/api/audit', require('./routes/audit'));
 
 // Health check
 app.get('/api/health', (req, res) => {

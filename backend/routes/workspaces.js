@@ -7,6 +7,7 @@ const Invite = require('../models/Invite');
 const User = require('../models/User');
 const { protect, checkWorkspaceMembership, requireRole, requirePermission } = require('../middleware/auth');
 const { validate } = require('../middleware/validation');
+const { logAudit } = require('../utils/auditLogger');
 
 // @route   POST /api/workspaces
 // @desc    Create new workspace
@@ -32,6 +33,17 @@ router.post('/', protect, [
       userId: req.user._id,
       workspaceId: workspace._id,
       role: 'Owner'
+    });
+
+    // Log audit
+    await logAudit({
+      workspaceId: workspace._id,
+      actorId: req.user._id,
+      action: 'workspace.created',
+      targetType: 'workspace',
+      targetId: workspace._id,
+      targetName: workspace.name,
+      req
     });
 
     res.status(201).json({
@@ -150,6 +162,7 @@ router.put('/:workspaceId', protect, checkWorkspaceMembership, requireRole('Owne
     if (color) updateData.color = color;
     
     // Only Owner can update settings
+    const oldWorkspace = await Workspace.findById(req.params.workspaceId);
     if (settings && req.membership.role === 'Owner') {
       updateData.settings = { ...settings };
     }
@@ -166,6 +179,24 @@ router.put('/:workspaceId', protect, checkWorkspaceMembership, requireRole('Owne
         message: 'Workspace not found'
       });
     }
+
+    // Log audit
+    const changes = {};
+    if (name && name !== oldWorkspace.name) changes.name = { from: oldWorkspace.name, to: name };
+    if (description !== undefined && description !== oldWorkspace.description) changes.description = { from: oldWorkspace.description, to: description };
+    if (color && color !== oldWorkspace.color) changes.color = { from: oldWorkspace.color, to: color };
+    if (settings) changes.settings = { from: oldWorkspace.settings, to: settings };
+
+    await logAudit({
+      workspaceId: workspace._id,
+      actorId: req.user._id,
+      action: settings ? 'workspace.settings_changed' : 'workspace.updated',
+      targetType: 'workspace',
+      targetId: workspace._id,
+      targetName: workspace.name,
+      changes,
+      req
+    });
 
     res.json({
       success: true,
@@ -199,6 +230,17 @@ router.delete('/:workspaceId', protect, checkWorkspaceMembership, requireRole('O
       { workspaceId: req.params.workspaceId, status: 'pending' },
       { status: 'cancelled' }
     );
+
+    // Log audit
+    await logAudit({
+      workspaceId: workspace._id,
+      actorId: req.user._id,
+      action: 'workspace.deleted',
+      targetType: 'workspace',
+      targetId: workspace._id,
+      targetName: workspace.name,
+      req
+    });
 
     res.json({
       success: true,
@@ -315,8 +357,22 @@ router.put('/:workspaceId/members/:membershipId/role',
         }
       }
 
+      const oldRole = membership.role;
       membership.role = role;
       await membership.save();
+
+      // Log audit
+      const targetUser = await User.findById(membership.userId);
+      await logAudit({
+        workspaceId: req.params.workspaceId,
+        actorId: req.user._id,
+        action: role === 'Owner' ? 'ownership.transferred' : 'member.role_changed',
+        targetType: 'member',
+        targetId: membership.userId,
+        targetName: targetUser ? `${targetUser.firstName} ${targetUser.lastName}` : 'Unknown',
+        changes: { role: { from: oldRole, to: role } },
+        req
+      });
 
       res.json({
         success: true,
@@ -377,6 +433,19 @@ router.delete('/:workspaceId/members/:membershipId',
       membership.isActive = false;
       await membership.save();
 
+      // Log audit
+      const targetUser = await User.findById(membership.userId);
+      await logAudit({
+        workspaceId: req.params.workspaceId,
+        actorId: req.user._id,
+        action: 'member.removed',
+        targetType: 'member',
+        targetId: membership.userId,
+        targetName: targetUser ? `${targetUser.firstName} ${targetUser.lastName}` : 'Unknown',
+        changes: { removedBy: req.user._id },
+        req
+      });
+
       res.json({
         success: true,
         message: 'Member removed successfully'
@@ -410,6 +479,17 @@ router.post('/:workspaceId/leave', protect, checkWorkspaceMembership, async (req
 
     req.membership.isActive = false;
     await req.membership.save();
+
+    // Log audit
+    await logAudit({
+      workspaceId: req.params.workspaceId,
+      actorId: req.user._id,
+      action: 'member.left',
+      targetType: 'member',
+      targetId: req.user._id,
+      targetName: `${req.user.firstName} ${req.user.lastName}`,
+      req
+    });
 
     res.json({
       success: true,

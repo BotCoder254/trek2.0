@@ -15,7 +15,8 @@ import {
   CheckSquare,
   ChevronDown,
   ChevronUp,
-  Bell
+  Bell,
+  Shield
 } from 'lucide-react';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -95,6 +96,13 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, onClose }) => {
       icon: BarChart3,
       path: currentWorkspace ? `/workspace/${currentWorkspace.id}/analytics` : '/dashboard',
       requiresWorkspace: true
+    },
+    {
+      name: 'Audit Logs',
+      icon: Shield,
+      path: currentWorkspace ? `/workspace/${currentWorkspace.id}/audit` : '/dashboard',
+      requiresWorkspace: true,
+      requiresRole: ['Owner', 'Manager']
     },
     {
       name: 'Notifications',
@@ -223,6 +231,11 @@ const Sidebar = ({ isCollapsed, setIsCollapsed, isMobile, onClose }) => {
             
             // Hide workspace-specific items if no workspace selected
             if (item.requiresWorkspace && !currentWorkspace && !isCollapsed) {
+              return null;
+            }
+
+            // Hide role-restricted items
+            if (item.requiresRole && currentWorkspace && !item.requiresRole.includes(currentWorkspace.role)) {
               return null;
             }
 

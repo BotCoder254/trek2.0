@@ -10,6 +10,7 @@ const Notification = require('../models/Notification');
 const { protect } = require('../middleware/auth');
 const { validate } = require('../middleware/validation');
 const { createNotification } = require('./notifications');
+const { logAudit } = require('../utils/auditLogger');
 
 // Helper to log activity
 const logActivity = async (type, taskId, userId, workspaceId, projectId, changes = {}, metadata = {}) => {
@@ -80,6 +81,17 @@ router.post('/', protect, [
     // Log activity
     await logActivity('task.created', task._id, req.user._id, project.workspaceId, projectId, {}, {
       title: task.title
+    });
+
+    // Log audit
+    await logAudit({
+      workspaceId: project.workspaceId,
+      actorId: req.user._id,
+      action: 'task.created',
+      targetType: 'task',
+      targetId: task._id,
+      targetName: task.title,
+      req
     });
 
     // Create notifications for assignees
@@ -325,6 +337,37 @@ router.put('/:taskId', protect, [
       checklist: task.checklist
     });
 
+    // Log audit for significant changes
+    if (status && status !== oldTask.status) {
+      const project = await Project.findById(task.projectId);
+      await logAudit({
+        workspaceId: project.workspaceId,
+        actorId: req.user._id,
+        action: 'task.status_changed',
+        targetType: 'task',
+        targetId: task._id,
+        targetName: task.title,
+        changes: { status: { from: oldTask.status, to: status } },
+        req
+      });
+    } else if (title || description || priority) {
+      const project = await Project.findById(task.projectId);
+      const changes = {};
+      if (title && title !== oldTask.title) changes.title = { from: oldTask.title, to: title };
+      if (priority && priority !== oldTask.priority) changes.priority = { from: oldTask.priority, to: priority };
+      
+      await logAudit({
+        workspaceId: project.workspaceId,
+        actorId: req.user._id,
+        action: 'task.updated',
+        targetType: 'task',
+        targetId: task._id,
+        targetName: task.title,
+        changes,
+        req
+      });
+    }
+
     // Create notifications for newly assigned users
     if (assignees !== undefined) {
       const newAssignees = assignees.filter(a => !oldAssignees.includes(a.toString()));
@@ -403,7 +446,19 @@ router.delete('/:taskId', protect, async (req, res, next) => {
       });
     }
 
+    const project = await Project.findById(task.projectId);
     await Task.findByIdAndDelete(task._id);
+
+    // Log audit
+    await logAudit({
+      workspaceId: project.workspaceId,
+      actorId: req.user._id,
+      action: 'task.deleted',
+      targetType: 'task',
+      targetId: task._id,
+      targetName: task.title,
+      req
+    });
 
     res.json({
       success: true,
