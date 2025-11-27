@@ -161,8 +161,9 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
   const task = taskData?.data?.task || formData;
   const comments = commentsData?.data?.comments || [];
 
-  const handleSave = () => {
-    updateMutation.mutate(formData);
+  const handleSave = (field, value) => {
+    const updateData = { [field]: value };
+    updateMutation.mutate(updateData);
   };
 
   const handleChecklistItemToggle = (index) => {
@@ -337,9 +338,9 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
               <div>
                 <input
                   type="text"
-                  value={task.title || ''}
-                  onChange={(e) => setFormData({ ...task, title: e.target.value })}
-                  onBlur={handleSave}
+                  value={formData.title || ''}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  onBlur={() => handleSave('title', formData.title)}
                   className="text-2xl font-bold w-full bg-transparent border-none focus:outline-none text-neutral-900 dark:text-neutral-100"
                   placeholder="Task title..."
                 />
@@ -393,9 +394,9 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
               <Clock className="w-4 h-4 text-neutral-500" />
               <input
                 type="number"
-                value={task.estimate || ''}
-                onChange={(e) => setFormData({ ...task, estimate: parseFloat(e.target.value) })}
-                onBlur={handleSave}
+                value={formData.estimate || ''}
+                onChange={(e) => setFormData({ ...formData, estimate: parseFloat(e.target.value) })}
+                onBlur={() => handleSave('estimate', formData.estimate)}
                 placeholder="Est. hours"
                 className="w-24 px-3 py-1 rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-neutral-800 text-sm"
               />
@@ -422,9 +423,9 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
           <div>
             <label className="label">Description</label>
             <textarea
-              value={task.description || ''}
-              onChange={(e) => setFormData({ ...task, description: e.target.value })}
-              onBlur={handleSave}
+              value={formData.description || ''}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onBlur={() => handleSave('description', formData.description)}
               rows="4"
               className="input resize-none"
               placeholder="Add a description..."
@@ -773,11 +774,11 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
                   <button
                     key={user._id}
                     onClick={() => {
-                      const assigneeIds = task.assignees?.map(a => a._id) || [];
+                      const currentAssignees = task.assignees || [];
+                      const assigneeIds = currentAssignees.map(a => a._id || a);
                       const newAssignees = isAssigned
                         ? assigneeIds.filter(id => id !== user._id)
                         : [...assigneeIds, user._id];
-                      setFormData({ ...task, assignees: newAssignees });
                       updateMutation.mutate({ assignees: newAssignees });
                     }}
                     className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
