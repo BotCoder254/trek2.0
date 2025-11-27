@@ -8,7 +8,11 @@ import {
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useWorkspace } from '../../context/WorkspaceContext';
-import api from '../../services/api';
+import { analyticsService } from '../../services/analyticsService';
+import CycleTimeChart from '../../components/analytics/CycleTimeChart';
+import BurndownChart from '../../components/analytics/BurndownChart';
+import WorkloadChart from '../../components/analytics/WorkloadChart';
+import SLAMetrics from '../../components/analytics/SLAMetrics';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -47,12 +51,31 @@ const AnalyticsPage = () => {
   const { data: dashboardData, refetch: refetchDashboard } = useQuery({
     queryKey: ['analytics', 'dashboard', currentWorkspace?.id],
     queryFn: async () => {
-      const response = await api.get(`/analytics/dashboard/${currentWorkspace.id}`);
+      const data = await analyticsService.getDashboard(currentWorkspace.id);
       setLastUpdated(new Date());
-      return response.data;
+      return data;
     },
     enabled: !!currentWorkspace?.id,
     refetchInterval: 30000 // Refetch every 30 seconds
+  });
+
+  // Advanced analytics
+  const { data: cycleTimeData, isLoading: cycleTimeLoading } = useQuery({
+    queryKey: ['analytics', 'cycle-time', currentWorkspace?.id, timeRange],
+    queryFn: () => analyticsService.getCycleTime(currentWorkspace.id, { days: timeRange }),
+    enabled: !!currentWorkspace?.id
+  });
+
+  const { data: workloadData, isLoading: workloadLoading } = useQuery({
+    queryKey: ['analytics', 'workload', currentWorkspace?.id],
+    queryFn: () => analyticsService.getWorkload(currentWorkspace.id),
+    enabled: !!currentWorkspace?.id
+  });
+
+  const { data: slaData, isLoading: slaLoading } = useQuery({
+    queryKey: ['analytics', 'sla', currentWorkspace?.id],
+    queryFn: () => analyticsService.getSLA(currentWorkspace.id),
+    enabled: !!currentWorkspace?.id
   });
 
   // Manual refresh
@@ -62,30 +85,15 @@ const AnalyticsPage = () => {
     setIsRefreshing(false);
   };
 
-  const { data: tasksByStatusData } = useQuery({
-    queryKey: ['analytics', 'tasks-by-status', currentWorkspace?.id, timeRange],
-    queryFn: async () => {
-      const response = await api.get(`/analytics/tasks-by-status/${currentWorkspace.id}?days=${timeRange}`);
-      return response.data;
-    },
-    enabled: !!currentWorkspace?.id
-  });
-
   const { data: projectProgressData } = useQuery({
     queryKey: ['analytics', 'project-progress', currentWorkspace?.id],
-    queryFn: async () => {
-      const response = await api.get(`/analytics/project-progress/${currentWorkspace.id}`);
-      return response.data;
-    },
+    queryFn: () => analyticsService.getProjectProgress(currentWorkspace.id),
     enabled: !!currentWorkspace?.id
   });
 
   const { data: tasksByAssigneeData } = useQuery({
     queryKey: ['analytics', 'tasks-by-assignee', currentWorkspace?.id],
-    queryFn: async () => {
-      const response = await api.get(`/analytics/tasks-by-assignee/${currentWorkspace.id}`);
-      return response.data;
-    },
+    queryFn: () => analyticsService.getTasksByAssignee(currentWorkspace.id),
     enabled: !!currentWorkspace?.id
   });
 
@@ -390,6 +398,16 @@ const AnalyticsPage = () => {
             change="+2"
             color="bg-warning-light"
           />
+        </div>
+
+        {/* Advanced Analytics */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <CycleTimeChart data={cycleTimeData?.data} isLoading={cycleTimeLoading} />
+          <WorkloadChart data={workloadData?.data} isLoading={workloadLoading} />
+        </div>
+
+        <div className="mb-8">
+          <SLAMetrics data={slaData?.data} isLoading={slaLoading} />
         </div>
 
         {/* Charts Grid */}
