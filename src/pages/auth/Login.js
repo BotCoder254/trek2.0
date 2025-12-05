@@ -91,7 +91,7 @@ const Login = () => {
           >
             <h1 className="text-5xl font-bold mb-6">Welcome to TREK</h1>
             <p className="text-xl text-white/90 max-w-md">
-              Powerful project management that brings teams together and gets work done.
+              Powerful Open Source project management tool that brings teams together and gets work done.
             </p>
           </motion.div>
         </div>
