@@ -156,13 +156,13 @@ const Signup = () => {
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6 }}
-        className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-info-light to-success-light dark:from-info-dark dark:to-success-dark relative overflow-hidden"
+        className="hidden lg:flex lg:w-1/2 mt-8 mb-8 rounded-r-xl ml-8 rounded-l-xl bg-gradient-to-br from-info-light to-success-light dark:from-info-dark dark:to-success-dark relative overflow-hidden"
       >
         <div className="absolute inset-0 bg-black/20" />
         <img 
           src="https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=2070&auto=format&fit=crop"
           alt="Team working together"
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover o"
         />
         <div className="absolute inset-0 flex flex-col justify-center items-center text-white p-12">
           <motion.div

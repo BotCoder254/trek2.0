@@ -163,6 +163,42 @@ router.delete('/:id', protect, async (req, res, next) => {
 // Helper function to create and emit notification
 const createNotification = async (data, io) => {
   try {
+    // Get user preferences to check if notifications are enabled
+    const User = require('../models/User');
+    const user = await User.findById(data.userId);
+    
+    if (!user) {
+      return null;
+    }
+
+    // Check notification preferences based on type
+    const prefs = user.preferences?.notifications || {};
+    const notificationType = data.type;
+    
+    // Map notification types to preference keys
+    const typeToPreference = {
+      'task_assigned': 'taskAssigned',
+      'task_completed': 'taskCompleted',
+      'comment_added': 'comments',
+      'mention': 'mentions'
+    };
+    
+    const prefKey = typeToPreference[notificationType];
+    
+    // If preference exists and is false, don't create notification
+    if (prefKey && prefs[prefKey] === false) {
+      return null;
+    }
+    
+    // Check if push notifications are disabled
+    if (prefs.push === false) {
+      // Don't create in-app notification
+      // But still send email if email notifications are enabled
+      if (prefs.email === false || !data.sendEmail) {
+        return null;
+      }
+    }
+
     const notification = await Notification.create(data);
     
     const populatedNotification = await Notification.findById(notification._id)
@@ -170,17 +206,15 @@ const createNotification = async (data, io) => {
       .populate('taskId', 'title')
       .populate('projectId', 'name');
 
-    // Emit socket event
-    if (io) {
+    // Emit socket event only if push notifications are enabled
+    if (io && prefs.push !== false) {
       io.to(`workspace:${data.workspaceId}`).emit('notification:new', {
         notification: populatedNotification
       });
     }
 
-    // Send email if not sent
-    if (!notification.isEmailSent && data.sendEmail) {
-      const user = await require('../models/User').findById(data.userId);
-      
+    // Send email if enabled and not sent
+    if (!notification.isEmailSent && data.sendEmail && prefs.email !== false) {
       if (user) {
         const emailHtml = `
           <!DOCTYPE html>
@@ -230,11 +264,43 @@ const createNotification = async (data, io) => {
 
     return populatedNotification;
   } catch (error) {
-    console.error('Create notification error:', error);
     throw error;
+  }
+};
+
+// Helper function to check if user should receive notification
+const shouldNotifyUser = async (userId, notificationType) => {
+  try {
+    const User = require('../models/User');
+    const user = await User.findById(userId);
+    
+    if (!user) return false;
+    
+    const prefs = user.preferences?.notifications || {};
+    
+    // Map notification types to preference keys
+    const typeToPreference = {
+      'task_assigned': 'taskAssigned',
+      'task_completed': 'taskCompleted',
+      'comment_added': 'comments',
+      'mention': 'mentions'
+    };
+    
+    const prefKey = typeToPreference[notificationType];
+    
+    // If preference exists and is false, don't notify
+    if (prefKey && prefs[prefKey] === false) {
+      return false;
+    }
+    
+    // Check if push notifications are enabled
+    return prefs.push !== false;
+  } catch (error) {
+    return true; // Default to sending notification on error
   }
 };
 
 module.exports = router;
 module.exports.createNotification = createNotification;
+module.exports.shouldNotifyUser = shouldNotifyUser;
 

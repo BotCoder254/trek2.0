@@ -57,11 +57,7 @@ const AcceptInvite = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-light dark:bg-surface-dark">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          className="w-12 h-12 border-4 border-primary-light dark:border-primary-dark border-t-transparent rounded-full"
-        />
+        <div className="w-12 h-12 border-4 border-primary-light dark:border-primary-dark border-t-transparent rounded-full " />
       </div>
     );
   }

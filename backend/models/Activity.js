@@ -4,7 +4,7 @@ const activitySchema = new mongoose.Schema({
   workspaceId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Workspace',
-    required: true
+    required: false
   },
   taskId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -32,9 +32,24 @@ const activitySchema = new mongoose.Schema({
       'member.added',
       'dependency_added',
       'dependency_removed',
-      'dependency_unblocked'
+      'dependency_unblocked',
+      'profile_updated',
+      'email_changed',
+      'workspace_joined'
     ],
-    required: true
+    required: false
+  },
+  action: {
+    type: String,
+    required: false
+  },
+  entityType: {
+    type: String,
+    required: false
+  },
+  entityId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: false
   },
   userId: {
     type: mongoose.Schema.Types.ObjectId,

@@ -89,19 +89,27 @@ exports.sendInviteEmail = async ({ to, workspaceName, inviterName, role, inviteL
         .info-label {
           font-weight: 600;
           color: #6B7280;
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
         }
         .info-value {
           color: #111827;
           font-weight: 500;
+          font-size: 18px;
+          font-weight: 600;
         }
         .role-badge {
           display: inline-block;
-          padding: 4px 12px;
+          padding: px 12px;
           background: #F97316;
           color: white;
           border-radius: 12px;
           font-size: 14px;
           font-weight: 600;
+
         }
         .button {
           display: inline-block;
@@ -153,7 +161,7 @@ exports.sendInviteEmail = async ({ to, workspaceName, inviterName, role, inviteL
         </div>
         
         <div class="content">
-          <div class="greeting">You're Invited!</div>
+          <div class="greeting">You are Invited</div>
           
           <div class="message">
             <strong>${inviterName}</strong> has invited you to join <strong>${workspaceName}</strong> on TREK.
@@ -218,7 +226,7 @@ exports.sendInviteEmail = async ({ to, workspaceName, inviterName, role, inviteL
     await transporter.sendMail({
       from: `"TREK" <${config.EMAIL_USER}>`,
       to,
-      subject: `You're invited to join ${workspaceName} on TREK`,
+      subject: `You are invited to join ${workspaceName} on TREK`,
       html: emailTemplate
     });
     return { success: true };

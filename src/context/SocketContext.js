@@ -30,9 +30,24 @@ export const SocketProvider = ({ children }) => {
       return;
     }
 
+    // Get current user ID
+    const token = localStorage.getItem('token');
+    let userId = null;
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        userId = payload.id;
+      } catch (e) {
+        // Token parsing failed
+      }
+    }
+
     // Connect to Socket.io server
     const newSocket = io(process.env.REACT_APP_API_URL || 'http://localhost:5000', {
-      query: { workspaceId: currentWorkspace.id },
+      query: { 
+        workspaceId: currentWorkspace.id,
+        userId: userId
+      },
       transports: ['polling', 'websocket'],
       reconnection: true,
       reconnectionDelay: 1000,
@@ -40,56 +55,63 @@ export const SocketProvider = ({ children }) => {
     });
 
     newSocket.on('connect', () => {
-      console.log('🔌 Socket connected to workspace:', currentWorkspace.id);
       setIsConnected(true);
     });
 
     newSocket.on('disconnect', () => {
-      console.log('🔌 Socket disconnected');
       setIsConnected(false);
     });
 
     // Listen for real-time events
     newSocket.on('notification:new', (data) => {
-      console.log('🔔 New notification:', data);
-      // Invalidate notifications query
       queryClient.invalidateQueries(['notifications']);
       queryClient.invalidateQueries(['notifications', 'unread-count']);
       
-      // Show toast notification
       if (window.showNotificationToast) {
         window.showNotificationToast(data.notification);
       }
     });
 
     newSocket.on('task:created', (data) => {
-      console.log('✅ Task created:', data);
       queryClient.invalidateQueries(['tasks']);
       queryClient.invalidateQueries(['analytics']);
     });
 
     newSocket.on('task:updated', (data) => {
-      console.log('📝 Task updated:', data);
       queryClient.invalidateQueries(['task', data.taskId]);
       queryClient.invalidateQueries(['tasks']);
       queryClient.invalidateQueries(['analytics']);
     });
 
     newSocket.on('task:deleted', (data) => {
-      console.log('🗑️ Task deleted:', data);
       queryClient.invalidateQueries(['tasks']);
       queryClient.invalidateQueries(['analytics']);
     });
 
     newSocket.on('comment:created', (data) => {
-      console.log('💬 Comment created:', data);
       queryClient.invalidateQueries(['task', data.taskId]);
     });
 
     newSocket.on('dependency:unblocked', (data) => {
-      console.log('🔓 Task unblocked:', data);
       queryClient.invalidateQueries(['task', data.taskId]);
       queryClient.invalidateQueries(['tasks']);
+    });
+
+    newSocket.on('project:member-added', (data) => {
+      queryClient.invalidateQueries(['projects', data.workspaceId]);
+    });
+
+    newSocket.on('project:created', (data) => {
+      queryClient.invalidateQueries(['projects', data.workspaceId]);
+    });
+
+    newSocket.on('profile:updated', (data) => {
+      queryClient.invalidateQueries(['userProfile']);
+      queryClient.invalidateQueries(['currentUser']);
+    });
+
+    newSocket.on('preferences:updated', (data) => {
+      queryClient.invalidateQueries(['userProfile']);
     });
 
     setSocket(newSocket);

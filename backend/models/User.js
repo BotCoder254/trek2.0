@@ -28,6 +28,63 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  bio: {
+    type: String,
+    default: '',
+    maxlength: 500
+  },
+  timezone: {
+    type: String,
+    default: 'UTC'
+  },
+  preferences: {
+    theme: {
+      type: String,
+      enum: ['light', 'dark', 'system'],
+      default: 'system'
+    },
+    density: {
+      type: String,
+      enum: ['comfortable', 'compact'],
+      default: 'comfortable'
+    },
+    notifications: {
+      email: {
+        type: Boolean,
+        default: true
+      },
+      push: {
+        type: Boolean,
+        default: true
+      },
+      taskAssigned: {
+        type: Boolean,
+        default: true
+      },
+      taskCompleted: {
+        type: Boolean,
+        default: true
+      },
+      comments: {
+        type: Boolean,
+        default: true
+      },
+      mentions: {
+        type: Boolean,
+        default: true
+      }
+    }
+  },
+  emailVerified: {
+    type: Boolean,
+    default: false
+  },
+  pendingEmail: {
+    type: String,
+    default: null
+  },
+  emailChangeToken: String,
+  emailChangeExpire: Date,
   isActive: {
     type: Boolean,
     default: true

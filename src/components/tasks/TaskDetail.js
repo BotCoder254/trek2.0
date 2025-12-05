@@ -42,6 +42,9 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [showGallery, setShowGallery] = useState(false);
   const [activeTab, setActiveTab] = useState('details'); // details, dependencies, history
+  const [showAssigneeModal, setShowAssigneeModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
   const REACTIONS = [
     { icon: ThumbsUp, label: 'like', color: 'text-info-light' },
@@ -65,6 +68,18 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
     enabled: !!projectId
   });
 
+  // Fetch workspace members
+  const { data: membersData } = useQuery({
+    queryKey: ['workspace-members', projectData?.data?.project?.workspaceId],
+    queryFn: async () => {
+      const response = await fetch(`/api/workspaces/${projectData?.data?.project?.workspaceId}/members`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      return response.json();
+    },
+    enabled: !!projectData?.data?.project?.workspaceId
+  });
+
   // Update formData when task data changes
   React.useEffect(() => {
     if (taskData?.data?.task) {
@@ -84,6 +99,24 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
     enabled: !!taskId
   });
 
+  // Add reaction mutation
+  const addReactionMutation = useMutation({
+    mutationFn: async ({ commentId, type }) => {
+      const response = await fetch(`/api/tasks/${taskId}/comments/${commentId}/react`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ type })
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['task-comments', taskId]);
+    }
+  });
+
   // Update task mutation
   const updateMutation = useMutation({
     mutationFn: (data) => projectService.updateTask(taskId, data),
@@ -94,6 +127,15 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
         setFormData(response.data.task);
       }
       setIsEditing(false);
+    }
+  });
+
+  // Delete task mutation
+  const deleteMutation = useMutation({
+    mutationFn: () => projectService.deleteTask(taskId),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['tasks', projectId]);
+      onClose();
     }
   });
 
@@ -119,8 +161,9 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
   const task = taskData?.data?.task || formData;
   const comments = commentsData?.data?.comments || [];
 
-  const handleSave = () => {
-    updateMutation.mutate(formData);
+  const handleSave = (field, value) => {
+    const updateData = { [field]: value };
+    updateMutation.mutate(updateData);
   };
 
   const handleChecklistItemToggle = (index) => {
@@ -197,9 +240,32 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
           </div>
 
           <div className="flex items-center gap-2">
-            <button className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg">
-              <MoreVertical className="w-5 h-5" />
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setShowMenu(!showMenu)}
+                className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg"
+              >
+                <MoreVertical className="w-5 h-5" />
+              </button>
+              {showMenu && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-neutral-800 rounded-lg shadow-xl border border-border-light dark:border-border-dark z-50"
+                >
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      setShowDeleteModal(true);
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-left text-secondary-light dark:text-secondary-dark hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete Task
+                  </button>
+                </motion.div>
+              )}
+            </div>
             <button
               onClick={onClose}
               className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg"
@@ -272,9 +338,9 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
               <div>
                 <input
                   type="text"
-                  value={task.title || ''}
-                  onChange={(e) => setFormData({ ...task, title: e.target.value })}
-                  onBlur={handleSave}
+                  value={formData.title || ''}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  onBlur={() => handleSave('title', formData.title)}
                   className="text-2xl font-bold w-full bg-transparent border-none focus:outline-none text-neutral-900 dark:text-neutral-100"
                   placeholder="Task title..."
                 />
@@ -286,16 +352,24 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-neutral-500" />
               <div className="flex -space-x-2">
-                {task.assignees?.map((assignee, i) => (
+                {task.assignees?.map((assignee) => (
                   <div
-                    key={i}
-                    className="w-8 h-8 rounded-full bg-primary-light text-white text-sm flex items-center justify-center ring-2 ring-surface-light dark:ring-surface-dark"
-                    title={assignee.fullName}
+                    key={assignee._id}
+                    className="w-8 h-8 rounded-full bg-primary-light dark:bg-primary-dark text-white text-sm flex items-center justify-center ring-2 ring-surface-light dark:ring-surface-dark cursor-pointer hover:ring-4 transition-all"
+                    title={`${assignee.firstName} ${assignee.lastName}`}
+                    onClick={() => {
+                      const newAssignees = task.assignees.filter(a => a._id !== assignee._id).map(a => a._id);
+                      setFormData({ ...task, assignees: newAssignees });
+                      updateMutation.mutate({ assignees: newAssignees });
+                    }}
                   >
                     {assignee.firstName?.[0]}{assignee.lastName?.[0]}
                   </div>
                 ))}
-                <button className="w-8 h-8 rounded-full bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center hover:bg-neutral-300 dark:hover:bg-neutral-600">
+                <button 
+                  onClick={() => setShowAssigneeModal(true)}
+                  className="w-8 h-8 rounded-full bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors"
+                >
                   <Plus className="w-4 h-4" />
                 </button>
               </div>
@@ -320,9 +394,9 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
               <Clock className="w-4 h-4 text-neutral-500" />
               <input
                 type="number"
-                value={task.estimate || ''}
-                onChange={(e) => setFormData({ ...task, estimate: parseFloat(e.target.value) })}
-                onBlur={handleSave}
+                value={formData.estimate || ''}
+                onChange={(e) => setFormData({ ...formData, estimate: parseFloat(e.target.value) })}
+                onBlur={() => handleSave('estimate', formData.estimate)}
                 placeholder="Est. hours"
                 className="w-24 px-3 py-1 rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-neutral-800 text-sm"
               />
@@ -349,9 +423,9 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
           <div>
             <label className="label">Description</label>
             <textarea
-              value={task.description || ''}
-              onChange={(e) => setFormData({ ...task, description: e.target.value })}
-              onBlur={handleSave}
+              value={formData.description || ''}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onBlur={() => handleSave('description', formData.description)}
               rows="4"
               className="input resize-none"
               placeholder="Add a description..."
@@ -558,7 +632,7 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
                                     whileTap={{ scale: 0.9 }}
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      console.log(`Reacted with ${label} to comment ${comment._id}`);
+                                      addReactionMutation.mutate({ commentId: comment._id, type: label });
                                       setShowReactions(null);
                                     }}
                                     className={`p-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition-all`}
@@ -571,6 +645,31 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
                             )}
                           </AnimatePresence>
                         </div>
+
+                        {/* Display Reactions */}
+                        {comment.reactions && comment.reactions.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {Object.entries(
+                              comment.reactions.reduce((acc, r) => {
+                                acc[r.type] = (acc[r.type] || 0) + 1;
+                                return acc;
+                              }, {})
+                            ).map(([type, count]) => {
+                              const reaction = REACTIONS.find(r => r.label === type);
+                              if (!reaction) return null;
+                              const Icon = reaction.icon;
+                              return (
+                                <div
+                                  key={type}
+                                  className="flex items-center gap-1 px-2 py-1 rounded-full bg-neutral-100 dark:bg-neutral-700 text-xs"
+                                >
+                                  <Icon className={`w-3.5 h-3.5 ${reaction.color}`} />
+                                  <span>{count}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -653,6 +752,115 @@ const TaskDetail = ({ taskId, projectId, onClose, canEdit = true }) => {
             setShowGallery(false);
           }}
         />
+      )}
+
+      {/* Assignee Modal */}
+      {showAssigneeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" onClick={() => setShowAssigneeModal(false)}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={(e) => e.stopPropagation()}
+            className="card p-6 w-full max-w-md max-h-[80vh] overflow-y-auto"
+          >
+            <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">
+              Assign Members
+            </h3>
+            <div className="space-y-2">
+              {membersData?.data?.members?.map((member) => {
+                const user = member.userId || member.user;
+                const isAssigned = task.assignees?.some(a => a._id === user._id);
+                return (
+                  <button
+                    key={user._id}
+                    onClick={() => {
+                      const currentAssignees = task.assignees || [];
+                      const assigneeIds = currentAssignees.map(a => a._id || a);
+                      const newAssignees = isAssigned
+                        ? assigneeIds.filter(id => id !== user._id)
+                        : [...assigneeIds, user._id];
+                      updateMutation.mutate({ assignees: newAssignees });
+                    }}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                      isAssigned
+                        ? 'bg-primary-light/10 dark:bg-primary-dark/10 border-2 border-primary-light dark:border-primary-dark'
+                        : 'bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+                    }`}
+                  >
+                    <div className="w-10 h-10 rounded-full bg-primary-light dark:bg-primary-dark text-white flex items-center justify-center">
+                      {user.firstName?.[0]}{user.lastName?.[0]}
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="font-medium text-neutral-900 dark:text-neutral-100">
+                        {user.firstName} {user.lastName}
+                      </p>
+                      <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                        {user.email}
+                      </p>
+                    </div>
+                    {isAssigned && (
+                      <div className="w-5 h-5 rounded-full bg-primary-light dark:bg-primary-dark text-white flex items-center justify-center">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => setShowAssigneeModal(false)}
+              className="w-full btn btn-secondary mt-4"
+            >
+              Done
+            </button>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4" onClick={() => setShowDeleteModal(false)}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={(e) => e.stopPropagation()}
+            className="card p-6 w-full max-w-md"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-secondary-light/10 dark:bg-secondary-dark/10 flex items-center justify-center">
+                <Trash2 className="w-6 h-6 text-secondary-light dark:text-secondary-dark" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+                  Delete Task
+                </h3>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                  This action cannot be undone
+                </p>
+              </div>
+            </div>
+            <p className="text-neutral-700 dark:text-neutral-300 mb-6">
+              Are you sure you want to delete <strong>{task.title}</strong>? All comments, attachments, and history will be permanently removed.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 btn btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteMutation.mutate()}
+                disabled={deleteMutation.isPending}
+                className="flex-1 btn bg-secondary-light dark:bg-secondary-dark text-white hover:opacity-90"
+              >
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
       )}
     </AnimatePresence>
   );

@@ -39,10 +39,16 @@ const ProjectDetail = () => {
   // Fetch tasks
   const { data: tasksData } = useQuery({
     queryKey: ['tasks', projectId, selectedEpic, filters],
-    queryFn: () => projectService.getProjectTasks(projectId, { 
-      ...(selectedEpic ? { epicId: selectedEpic } : {}),
-      ...filters
-    })
+    queryFn: () => {
+      if (!projectId || typeof projectId !== 'string' || projectId.length !== 24) {
+        throw new Error('Invalid project ID');
+      }
+      return projectService.getProjectTasks(projectId, { 
+        ...(selectedEpic ? { epicId: selectedEpic } : {}),
+        ...filters
+      });
+    },
+    enabled: !!projectId
   });
 
   // Create task mutation
@@ -192,7 +198,7 @@ const ProjectDetail = () => {
       </div>
 
       {/* Main Content */}
-      <div className={`${viewMode === 'kanban' ? 'w-full' : 'max-w-7xl mx-auto'} p-4 sm:p-6 lg:p-8`}>
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         {/* Filters */}
         <TaskFilters 
           filters={filters}
@@ -216,11 +222,13 @@ const ProjectDetail = () => {
                 <span className="hidden sm:inline">Add Task</span>
               </button>
             </div>
-            <KanbanBoard 
-              tasks={tasks} 
-              projectId={projectId}
-              onTaskClick={(task) => setSelectedTaskId(task._id)}
-            />
+            <div className="overflow-x-auto -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8">
+              <KanbanBoard 
+                tasks={tasks} 
+                projectId={projectId}
+                onTaskClick={(task) => setSelectedTaskId(task._id)}
+              />
+            </div>
           </div>
         ) : (
           /* List View */

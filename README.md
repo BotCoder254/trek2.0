@@ -9,6 +9,7 @@ A modern, full-stack project management platform built with the MERN stack (Mong
     <td><img src="projectimages/Screenshot From 2025-11-26 13-31-18.png" alt="Dashboard" width="100%"/></td>
     <td><img src="projectimages/Screenshot From 2025-11-26 13-32-48.png" alt="Projects" width="100%"/></td>
     <td><img src="projectimages/Screenshot From 2025-11-26 13-32-55.png" alt="Tasks" width="100%"/></td>
+     <td><img src="projectimages/Screenshot From 2025-11-26 22-24-40.png" alt="Tasks" width="100%"/></td>
   </tr>
   <tr>
     <td><img src="projectimages/Screenshot From 2025-11-26 18-25-45.png" alt="Analytics" width="100%"/></td>
@@ -57,6 +58,17 @@ A modern, full-stack project management platform built with the MERN stack (Mong
 - Persistent theme selection
 - Smooth theme transitions
 - Complete dark mode coverage
+
+#### 6. User Profile & Settings
+- Comprehensive profile management
+- Avatar upload with drag-and-drop
+- Bio and timezone settings
+- Theme preferences (light/dark/system)
+- Display density options
+- Password change with validation
+- Email change with confirmation flow
+- Notification preferences
+- Activity history tracking
 
 ## 🛠️ Tech Stack
 
@@ -257,6 +269,17 @@ trek/
 - `GET /api/auth/me` - Get current user
 - `PUT /api/auth/profile` - Update profile
 - `POST /api/auth/change-password` - Change password
+- `POST /api/auth/forgot-password` - Request password reset
+- `POST /api/auth/reset-password/:token` - Reset password
+
+### Users
+- `GET /api/users/me` - Get user profile
+- `PATCH /api/users/me` - Update user profile
+- `POST /api/users/me/avatar/presign` - Get avatar upload URL
+- `PATCH /api/users/me/preferences` - Update preferences
+- `POST /api/users/me/email/change` - Initiate email change
+- `POST /api/users/confirm-email/:token` - Confirm email change
+- `GET /api/users/me/activity` - Get user activity history
 
 ### Workspaces
 - `POST /api/workspaces` - Create workspace
@@ -279,19 +302,19 @@ trek/
 ## 🚧 Coming Soon
 
 - Projects & Epics
-- Tasks & Subtasks
+- Tasks & Subtasks(Implemented)
 - Kanban Board
 - Calendar View
 - Analytics Dashboard
-- File Attachments
-- Comments & Activity Feed
-- Real-time Notifications
-- Advanced Search
-- Team Chat
+- File Attachments(implemented)
+- Comments & Activity Feed(implemented)
+- Real-time Notifications(implemented)
+- Advanced Search(implemented)
+- Team Chat(cooming soon)
 
 ## 📄 License
 
-This project is private and proprietary.
+This project is private and proprietary and also open source .
 
 ## 👨‍💻 Development
 

@@ -6,8 +6,11 @@ const Project = require('../models/Project');
 const Membership = require('../models/Membership');
 const Activity = require('../models/Activity');
 const Comment = require('../models/Comment');
+const Notification = require('../models/Notification');
 const { protect } = require('../middleware/auth');
 const { validate } = require('../middleware/validation');
+const { createNotification } = require('./notifications');
+const { logAudit } = require('../utils/auditLogger');
 
 // Helper to log activity
 const logActivity = async (type, taskId, userId, workspaceId, projectId, changes = {}, metadata = {}) => {
@@ -79,6 +82,37 @@ router.post('/', protect, [
     await logActivity('task.created', task._id, req.user._id, project.workspaceId, projectId, {}, {
       title: task.title
     });
+
+    // Log audit
+    await logAudit({
+      workspaceId: project.workspaceId,
+      actorId: req.user._id,
+      action: 'task.created',
+      targetType: 'task',
+      targetId: task._id,
+      targetName: task.title,
+      req
+    });
+
+    // Create notifications for assignees
+    if (assignees && assignees.length > 0) {
+      const io = req.app.get('socketio');
+      for (const assigneeId of assignees) {
+        if (assigneeId.toString() !== req.user._id.toString()) {
+          await createNotification({
+            workspaceId: project.workspaceId,
+            userId: assigneeId,
+            type: 'task_assigned',
+            title: 'New task assigned',
+            message: `${req.user.firstName} ${req.user.lastName} assigned you to "${task.title}"`,
+            link: `/workspace/${project.workspaceId}/projects/${projectId}`,
+            taskId: task._id,
+            projectId: projectId,
+            triggeredBy: req.user._id
+          }, io);
+        }
+      }
+    }
 
     res.status(201).json({
       success: true,
@@ -168,9 +202,13 @@ router.get('/calendar', protect, async (req, res, next) => {
 // @access  Private
 router.get('/project/:projectId', protect, async (req, res, next) => {
   try {
+    const projectId = req.params.projectId;
+    if (!projectId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ success: false, message: 'Invalid project ID' });
+    }
     const { epicId, status, assignee, labels } = req.query;
     
-    const query = { projectId: req.params.projectId };
+    const query = { projectId };
     
     if (epicId) query.epicId = epicId === 'null' ? null : epicId;
     if (status) query.status = status;
@@ -258,6 +296,7 @@ router.put('/:taskId', protect, [
     const { title, description, status, priority, epicId, assignees, dueDate, tags, order, labels, checklist, estimate, timeSpent, position } = req.body;
 
     const oldTask = { ...task.toObject() };
+    const oldAssignees = task.assignees.filter(a => a).map(a => a.toString());
 
     if (title !== undefined) task.title = title;
     if (description !== undefined) task.description = description;
@@ -297,6 +336,62 @@ router.put('/:taskId', protect, [
       description: task.description,
       checklist: task.checklist
     });
+
+    // Log audit for significant changes
+    if (status && status !== oldTask.status) {
+      const project = await Project.findById(task.projectId);
+      await logAudit({
+        workspaceId: project.workspaceId,
+        actorId: req.user._id,
+        action: 'task.status_changed',
+        targetType: 'task',
+        targetId: task._id,
+        targetName: task.title,
+        changes: { status: { from: oldTask.status, to: status } },
+        req
+      });
+    } else if (title || description || priority) {
+      const project = await Project.findById(task.projectId);
+      const changes = {};
+      if (title && title !== oldTask.title) changes.title = { from: oldTask.title, to: title };
+      if (priority && priority !== oldTask.priority) changes.priority = { from: oldTask.priority, to: priority };
+      
+      await logAudit({
+        workspaceId: project.workspaceId,
+        actorId: req.user._id,
+        action: 'task.updated',
+        targetType: 'task',
+        targetId: task._id,
+        targetName: task.title,
+        changes,
+        req
+      });
+    }
+
+    // Create notifications for newly assigned users
+    if (assignees !== undefined) {
+      const newAssignees = assignees.filter(a => a && !oldAssignees.includes(a.toString()));
+      if (newAssignees.length > 0) {
+        const io = req.app.get('socketio');
+        const projectDoc = await Project.findById(task.projectId);
+        const projId = projectDoc._id.toString();
+        for (const assigneeId of newAssignees) {
+          if (assigneeId.toString() !== req.user._id.toString()) {
+            await createNotification({
+              workspaceId: projectDoc.workspaceId,
+              userId: assigneeId,
+              type: 'task_assigned',
+              title: 'Task assigned to you',
+              message: `${req.user.firstName} ${req.user.lastName} assigned you to "${task.title}"`,
+              link: `/workspace/${projectDoc.workspaceId}/projects/${projId}`,
+              taskId: task._id,
+              projectId: projId,
+              triggeredBy: req.user._id
+            }, io);
+          }
+        }
+      }
+    }
 
     // If task status changed to 'done', check if it unblocks any other tasks
     if (status === 'done' && oldTask.status !== 'done' && task.blockedBy && task.blockedBy.length > 0) {
@@ -351,7 +446,19 @@ router.delete('/:taskId', protect, async (req, res, next) => {
       });
     }
 
+    const project = await Project.findById(task.projectId);
     await Task.findByIdAndDelete(task._id);
+
+    // Log audit
+    await logAudit({
+      workspaceId: project.workspaceId,
+      actorId: req.user._id,
+      action: 'task.deleted',
+      targetType: 'task',
+      targetId: task._id,
+      targetName: task.title,
+      req
+    });
 
     res.json({
       success: true,
@@ -463,6 +570,33 @@ router.post('/:taskId/comments', protect, [
     // Log activity
     await logActivity('comment.added', task._id, req.user._id, task.projectId.workspaceId, task.projectId._id);
 
+    // Create notifications for task assignees and creator
+    const notifyUsers = new Set();
+    if (task.assignees) {
+      task.assignees.filter(a => a).forEach(a => notifyUsers.add(a.toString()));
+    }
+    if (task.createdBy) {
+      notifyUsers.add(task.createdBy.toString());
+    }
+    notifyUsers.delete(req.user._id.toString());
+
+    const io = req.app.get('socketio');
+    const projectDoc = await Project.findById(task.projectId);
+    const projId = projectDoc._id.toString();
+    for (const userId of notifyUsers) {
+      await createNotification({
+        workspaceId: projectDoc.workspaceId,
+        userId: userId,
+        type: 'comment_added',
+        title: 'New comment on task',
+        message: `${req.user.firstName} ${req.user.lastName} commented on "${task.title}"`,
+        link: `/workspace/${projectDoc.workspaceId}/projects/${projId}`,
+        taskId: task._id,
+        projectId: projId,
+        triggeredBy: req.user._id
+      }, io);
+    }
+
     res.status(201).json({
       success: true,
       message: 'Comment added successfully',
@@ -514,6 +648,88 @@ router.get('/:taskId/activity', protect, async (req, res, next) => {
     res.json({
       success: true,
       data: { activities }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @route   POST /api/tasks/:taskId/comments/:commentId/react
+// @desc    Add reaction to comment
+// @access  Private
+router.post('/:taskId/comments/:commentId/react', protect, [
+  body('type').isIn(['like', 'love', 'haha', 'sad', 'wow']).withMessage('Invalid reaction type'),
+  validate
+], async (req, res, next) => {
+  try {
+    const { type } = req.body;
+    const comment = await Comment.findById(req.params.commentId);
+
+    if (!comment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Comment not found'
+      });
+    }
+
+    // Check if user already reacted
+    const existingReaction = comment.reactions.find(
+      r => r.userId.toString() === req.user._id.toString()
+    );
+
+    if (existingReaction) {
+      // Update existing reaction
+      existingReaction.type = type;
+    } else {
+      // Add new reaction
+      comment.reactions.push({
+        userId: req.user._id,
+        type
+      });
+    }
+
+    await comment.save();
+
+    const updatedComment = await Comment.findById(comment._id)
+      .populate('userId', 'firstName lastName email avatar')
+      .populate('reactions.userId', 'firstName lastName');
+
+    res.json({
+      success: true,
+      data: { comment: updatedComment }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @route   DELETE /api/tasks/:taskId/comments/:commentId/react
+// @desc    Remove reaction from comment
+// @access  Private
+router.delete('/:taskId/comments/:commentId/react', protect, async (req, res, next) => {
+  try {
+    const comment = await Comment.findById(req.params.commentId);
+
+    if (!comment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Comment not found'
+      });
+    }
+
+    comment.reactions = comment.reactions.filter(
+      r => r.userId.toString() !== req.user._id.toString()
+    );
+
+    await comment.save();
+
+    const updatedComment = await Comment.findById(comment._id)
+      .populate('userId', 'firstName lastName email avatar')
+      .populate('reactions.userId', 'firstName lastName');
+
+    res.json({
+      success: true,
+      data: { comment: updatedComment }
     });
   } catch (error) {
     next(error);

@@ -4,6 +4,7 @@ const { protect } = require('../middleware/auth');
 const Task = require('../models/Task');
 const Activity = require('../models/Activity');
 const Notification = require('../models/Notification');
+const { createNotification } = require('./notifications');
 
 // Helper function to check if task creates circular dependency
 const hasCircularDependency = async (taskId, dependencyId, visited = new Set()) => {
@@ -246,24 +247,24 @@ router.post('/:taskId/check-unblock', protect, async (req, res, next) => {
       await task.save();
       
       // Create notification for assignees
+      const io = req.app.get('socketio');
       if (task.assignees && task.assignees.length > 0) {
         for (const assigneeId of task.assignees) {
-          await Notification.create({
+          await createNotification({
             workspaceId: task.projectId.workspaceId,
             userId: assigneeId,
-            type: 'dependency_unblocked',
+            type: 'task_assigned',
             title: 'Task Unblocked',
             message: `Task "${task.title}" is now unblocked and ready to work on`,
             link: `/workspace/${task.projectId.workspaceId}/projects/${task.projectId._id}`,
             taskId: task._id,
             projectId: task.projectId._id,
             triggeredBy: req.user._id
-          });
+          }, io);
         }
       }
       
       // Emit socket event
-      const io = req.app.get('io');
       if (io) {
         io.to(`workspace:${task.projectId.workspaceId}`).emit('dependency:unblocked', {
           taskId: task._id

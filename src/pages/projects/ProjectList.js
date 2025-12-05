@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FolderKanban, Plus, Users, CheckCircle, Clock, MoreVertical, Loader } from 'lucide-react';
+import { FolderKanban, Plus, Users, CheckCircle, Clock, MoreVertical, Loader, Trash2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { projectService } from '../../services/projectService';
 import { hasPermission, PERMISSIONS } from '../../utils/roleUtils';
@@ -13,6 +13,9 @@ const ProjectList = () => {
   const queryClient = useQueryClient();
   const { currentWorkspace } = useWorkspace();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [showMenu, setShowMenu] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -24,6 +27,16 @@ const ProjectList = () => {
     queryKey: ['projects', workspaceId],
     queryFn: () => projectService.getWorkspaceProjects(workspaceId),
     enabled: !!workspaceId
+  });
+
+  // Delete project mutation
+  const deleteMutation = useMutation({
+    mutationFn: (projectId) => projectService.deleteProject(projectId),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['projects', workspaceId]);
+      setShowDeleteModal(false);
+      setSelectedProject(null);
+    }
   });
 
   // Create project mutation
@@ -128,15 +141,38 @@ const ProjectList = () => {
                   >
                     <FolderKanban className="w-6 h-6" />
                   </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Handle menu
-                    }}
-                    className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition-colors"
-                  >
-                    <MoreVertical className="w-5 h-5" />
-                  </button>
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(showMenu === project._id ? null : project._id);
+                      }}
+                      className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition-colors"
+                    >
+                      <MoreVertical className="w-5 h-5" />
+                    </button>
+                    {showMenu === project._id && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-neutral-800 rounded-lg shadow-xl border border-border-light dark:border-border-dark z-50"
+                      >
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedProject(project);
+                            setShowDeleteModal(true);
+                            setShowMenu(null);
+                          }}
+                          className="w-full flex items-center gap-2 px-4 py-2 text-left text-secondary-light dark:text-secondary-dark hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete Project
+                        </button>
+                      </motion.div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Title & Description */}
@@ -180,15 +216,27 @@ const ProjectList = () => {
                     </div>
                   </div>
                   <div className="flex -space-x-2">
-                    {project.members?.slice(0, 3).map((member, i) => (
+                    {project.members?.slice(0, 3).map((member) => {
+                      const user = member?.userId;
+                      if (!user) return null;
+                      return (
+                        <div
+                          key={user._id}
+                          className="w-6 h-6 rounded-full bg-primary-light dark:bg-primary-dark text-white text-xs flex items-center justify-center ring-2 ring-surface-light dark:ring-surface-dark"
+                          title={`${user.firstName} ${user.lastName}`}
+                        >
+                          {user.firstName?.[0]}{user.lastName?.[0]}
+                        </div>
+                      );
+                    })}
+                    {project.members?.length > 3 && (
                       <div
-                        key={i}
-                        className="w-6 h-6 rounded-full bg-primary-light dark:bg-primary-dark text-white text-xs flex items-center justify-center ring-2 ring-surface-light dark:ring-surface-dark"
-                        title={member.userId?.fullName}
+                        className="w-6 h-6 rounded-full bg-neutral-400 dark:bg-neutral-600 text-white text-xs flex items-center justify-center ring-2 ring-surface-light dark:ring-surface-dark"
+                        title={`+${project.members.length - 3} more`}
                       >
-                        {member.userId?.firstName?.[0]}{member.userId?.lastName?.[0]}
+                        +{project.members.length - 3}
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -247,6 +295,50 @@ const ProjectList = () => {
                 </button>
               </div>
             </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && selectedProject && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowDeleteModal(false)}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={(e) => e.stopPropagation()}
+            className="card p-6 w-full max-w-md"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-secondary-light/10 dark:bg-secondary-dark/10 flex items-center justify-center">
+                <Trash2 className="w-6 h-6 text-secondary-light dark:text-secondary-dark" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+                  Delete Project
+                </h3>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                  This action cannot be undone
+                </p>
+              </div>
+            </div>
+            <p className="text-neutral-700 dark:text-neutral-300 mb-6">
+              Are you sure you want to delete <strong>{selectedProject.name}</strong>? All tasks, epics, and related data will be permanently removed.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 btn btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteMutation.mutate(selectedProject._id)}
+                disabled={deleteMutation.isPending}
+                className="flex-1 btn bg-secondary-light dark:bg-secondary-dark text-white hover:opacity-90"
+              >
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
           </motion.div>
         </div>
       )}

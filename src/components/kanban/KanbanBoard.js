@@ -123,7 +123,7 @@ const KanbanBoard = ({ tasks = [], projectId, onTaskClick }) => {
   };
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4 px-4">
+    <div className="flex gap-4 pb-4 min-w-max">
       {STATUSES.map((status) => {
         const columnTasks = tasksByStatus[status.id] || [];
         const isOver = dragOverColumn === status.id;

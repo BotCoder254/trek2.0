@@ -25,6 +25,8 @@ import Dashboard from './pages/Dashboard';
 import CreateWorkspace from './pages/workspace/CreateWorkspace';
 import WorkspaceSettings from './pages/workspace/WorkspaceSettings';
 import AcceptInvite from './pages/invite/AcceptInvite';
+import ProfilePage from './pages/profile/ProfilePage';
+import ConfirmEmail from './pages/profile/ConfirmEmail';
 
 // Project Pages
 import ProjectList from './pages/projects/ProjectList';
@@ -38,6 +40,9 @@ import AnalyticsPage from './pages/analytics/AnalyticsPage';
 
 // Notifications
 import NotificationsPage from './pages/notifications/NotificationsPage';
+
+// Audit Logs
+import AuditLogsPage from './pages/workspace/AuditLogsPage';
 
 // Create Query Client
 const queryClient = new QueryClient({
@@ -91,6 +96,7 @@ function App() {
                   </PublicRoute>
                 }
               />
+              <Route path="/confirm-email/:token" element={<ConfirmEmail />} />
 
               {/* Root redirect */}
               <Route 
@@ -117,6 +123,7 @@ function App() {
                   <Route path="projects/:projectId" element={<ProjectDetail />} />
                   <Route path="calendar" element={<CalendarView />} />
                   <Route path="analytics" element={<AnalyticsPage />} />
+                  <Route path="audit" element={<AuditLogsPage />} />
                 </Route>
                 
                 {/* Invite Route */}
@@ -125,7 +132,7 @@ function App() {
                 {/* Settings */}
                 <Route path="settings">
                   <Route index element={<div className="p-8"><h1 className="text-2xl font-bold">Settings (Coming Soon)</h1></div>} />
-                  <Route path="profile" element={<div className="p-8"><h1 className="text-2xl font-bold">Profile (Coming Soon)</h1></div>} />
+                  <Route path="profile" element={<ProfilePage />} />
                 </Route>
               </Route>
 

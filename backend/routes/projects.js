@@ -7,6 +7,7 @@ const Task = require('../models/Task');
 const Membership = require('../models/Membership');
 const { protect, checkWorkspaceMembership, requirePermission } = require('../middleware/auth');
 const { validate } = require('../middleware/validation');
+const { logAudit } = require('../utils/auditLogger');
 
 // @route   POST /api/projects
 // @desc    Create project
@@ -43,6 +44,13 @@ router.post('/', protect, [
       });
     }
 
+    // Get all workspace members to add to project
+    const workspaceMembers = await Membership.find({ workspaceId, isActive: true });
+    const projectMembers = workspaceMembers.map(m => ({
+      userId: m.userId,
+      role: m.userId.toString() === req.user._id.toString() ? 'lead' : 'member'
+    }));
+
     const project = await Project.create({
       workspaceId,
       name,
@@ -52,15 +60,29 @@ router.post('/', protect, [
       dueDate,
       visibility,
       createdBy: req.user._id,
-      members: [{
-        userId: req.user._id,
-        role: 'lead'
-      }]
+      members: projectMembers
     });
 
     const populatedProject = await Project.findById(project._id)
       .populate('createdBy', 'firstName lastName email avatar')
       .populate('members.userId', 'firstName lastName email avatar');
+
+    // Log audit
+    await logAudit({
+      workspaceId,
+      actorId: req.user._id,
+      action: 'project.created',
+      targetType: 'project',
+      targetId: project._id,
+      targetName: project.name,
+      req
+    });
+
+    // Emit socket event
+    const io = req.app.get('socketio');
+    if (io) {
+      io.to(`workspace:${workspaceId}`).emit('project:created', { workspaceId });
+    }
 
     res.status(201).json({
       success: true,
@@ -123,7 +145,11 @@ router.get('/workspace/:workspaceId', protect, checkWorkspaceMembership, async (
 // @access  Private (Member)
 router.get('/:projectId', protect, async (req, res, next) => {
   try {
-    const project = await Project.findById(req.params.projectId)
+    const projectId = req.params.projectId;
+    if (!projectId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ success: false, message: 'Invalid project ID' });
+    }
+    const project = await Project.findById(projectId)
       .populate('createdBy', 'firstName lastName email avatar')
       .populate('members.userId', 'firstName lastName email avatar');
 
@@ -209,6 +235,7 @@ router.put('/:projectId', protect, [
     }
 
     const { name, description, color, status, startDate, dueDate, visibility } = req.body;
+    const oldProject = { ...project.toObject() };
 
     if (name) project.name = name;
     if (description !== undefined) project.description = description;
@@ -223,6 +250,22 @@ router.put('/:projectId', protect, [
     const updatedProject = await Project.findById(project._id)
       .populate('createdBy', 'firstName lastName email avatar')
       .populate('members.userId', 'firstName lastName email avatar');
+
+    // Log audit
+    const changes = {};
+    if (name && name !== oldProject.name) changes.name = { from: oldProject.name, to: name };
+    if (status && status !== oldProject.status) changes.status = { from: oldProject.status, to: status };
+    
+    await logAudit({
+      workspaceId: project.workspaceId,
+      actorId: req.user._id,
+      action: status === 'archived' ? 'project.archived' : 'project.updated',
+      targetType: 'project',
+      targetId: project._id,
+      targetName: project.name,
+      changes,
+      req
+    });
 
     res.json({
       success: true,
@@ -268,6 +311,17 @@ router.delete('/:projectId', protect, async (req, res, next) => {
     await Epic.deleteMany({ projectId: project._id });
     await Task.deleteMany({ projectId: project._id });
     await Project.findByIdAndDelete(project._id);
+
+    // Log audit
+    await logAudit({
+      workspaceId: project.workspaceId,
+      actorId: req.user._id,
+      action: 'project.deleted',
+      targetType: 'project',
+      targetId: project._id,
+      targetName: project.name,
+      req
+    });
 
     res.json({
       success: true,
